@@ -8,7 +8,7 @@
     "name": "Squik"
   },
   "meta": {
-    "description": "Compress academic videos under 200 MB — entirely in your browser."
+    "description": "Compress, merge, and trim videos under 200 MB — entirely in your browser."
   },
   "common": {
     "compress": "Compress",
@@ -21,20 +21,20 @@
     "trimAndCompress": "Trim & Compress"
   },
   "landing": {
-    "headlineBefore": "Optimize your",
-    "headlineAccent": "academic",
-    "headlineAfter": "videos 🎓",
+    "headlineBefore": "Squeeze your videos",
+    "headlineAccent": "under 200 MB",
+    "headlineAfter": "⚡",
     "compressSubtitleBefore": "Compress any video under",
-    "compressSubtitleAfter": "without losing quality 📦",
+    "compressSubtitleAfter": "right in your browser — no uploads 📦",
     "mergeSubtitleBefore": "Combine multiple clips into one video under",
     "mergeSubtitleAfter": "🎬",
     "trimSubtitleBefore": "Cut unwanted sections and keep under",
     "trimSubtitleAfter": "✂️",
     "dropAnywhere": "Drop anywhere...",
-    "dragDrop": "Drag & Drop",
+    "dragDrop": "Drag & Drop your video",
     "browseMultiple": "Add multiple clips or click to browse",
-    "browseSingle": "Or click to browse",
-    "formats": "MP4, MOV, WebM, MKV"
+    "browseSingle": "or click to browse",
+    "formats": "MP4 · MOV · WebM · MKV"
   },
   "trim": {
     "pickVideoFirst": "Pick a video first.",
@@ -113,6 +113,6 @@
     "showInFolder": "Show in Folder"
   },
   "footer": {
-    "text": "Made with <heart/> for the <channel>#live-video-edit</channel> channel"
+    "text": "Made with <heart/> by <channel>Squik</channel>"
   }
 }

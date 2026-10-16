@@ -452,11 +452,8 @@ body {
 
 .pixel-btn {
   color: #0e100f;
-  background:
-    radial-gradient(129% 99% at 120% 81%, rgb(223, 220, 255) 30%, rgb(166, 158, 255) 100%),
-    url("https://assets.codepen.io/16327/noise-e82662fe.png");
-  background-blend-mode: color-dodge;
-  font-weight: 400;
+  background: radial-gradient(135% 100% at 120% 85%, #dfdcff 30%, #a69eff 100%);
+  font-weight: 500;
   font-size: 0.875rem;
   line-height: 1.125rem;
   min-height: 2.75rem;
@@ -465,16 +462,24 @@ body {
   border-radius: 9999px;
   padding: 0.625rem 1.75rem;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 1px 3px rgba(99, 73, 255, 0.25), inset 0 1px 0 rgba(255,255,255,0.35);
+}
+
+.pixel-btn:hover:not(:disabled) {
+  box-shadow: 0 3px 10px rgba(99, 73, 255, 0.35), inset 0 1px 0 rgba(255,255,255,0.35);
+  transform: translateY(-1px);
 }
 
 .pixel-btn:active:not(:disabled) {
   transform: translateY(1px);
+  box-shadow: none;
 }
 
 .pixel-btn:disabled {
@@ -483,11 +488,14 @@ body {
 }
 
 .pixel-btn-secondary {
-  background:
-    radial-gradient(129% 99% at 120% 81%, rgb(235, 243, 255) 30%, rgb(180, 210, 255) 100%),
-    url("https://assets.codepen.io/16327/noise-e82662fe.png");
-  background-blend-mode: color-dodge;
+  background: radial-gradient(135% 100% at 120% 85%, #ebf3ff 30%, #b4d2ff 100%);
   border: 1px solid var(--color-border);
+  box-shadow: 0 1px 3px rgba(14, 113, 251, 0.15), inset 0 1px 0 rgba(255,255,255,0.5);
+}
+
+.pixel-btn-secondary:hover:not(:disabled) {
+  box-shadow: 0 3px 8px rgba(14, 113, 251, 0.2), inset 0 1px 0 rgba(255,255,255,0.5);
+  transform: translateY(-1px);
 }
 
 .pixel-btn-block {

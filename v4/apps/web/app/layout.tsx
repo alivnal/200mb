@@ -18,8 +18,8 @@ const jersey25 = Jersey_25({
 });
 
 export const metadata: Metadata = {
-  title: '200mb',
-  description: 'Compress, merge, and trim academic videos under 200 MB — entirely in your browser.',
+  title: 'Squik — Compress videos under 200 MB',
+  description: 'Compress, merge, and trim videos under 200 MB — entirely in your browser. No uploads, no accounts.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

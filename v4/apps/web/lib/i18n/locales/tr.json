@@ -5,10 +5,10 @@
     "tr": "Türkçe"
   },
   "app": {
-    "name": "200mb"
+    "name": "Squik"
   },
   "meta": {
-    "description": "Canlı Ders videolarını 200 MB altında sıkıştırın — tamamen tarayıcınızda."
+    "description": "Videolarını 200 MB altında sıkıştır, birleştir ve kırp — tamamen tarayıcında."
   },
   "common": {
     "compress": "Sıkıştır",
@@ -21,20 +21,20 @@
     "trimAndCompress": "Kırp ve Sıkıştır"
   },
   "landing": {
-    "headlineBefore": "",
-    "headlineAccent": "Canlı Ders",
-    "headlineAfter": "videolarını optimize et 🎓",
+    "headlineBefore": "Videolarını",
+    "headlineAccent": "200 MB altına",
+    "headlineAfter": "sıkıştır ⚡",
     "compressSubtitleBefore": "Herhangi bir videoyu",
-    "compressSubtitleAfter": "altına sıkıştır 📦",
+    "compressSubtitleAfter": "altına sıkıştır — yüklemesiz, tarayıcında 📦",
     "mergeSubtitleBefore": "Birden fazla videonu",
     "mergeSubtitleAfter": "altında birleştir 🎬",
     "trimSubtitleBefore": "İstemediğin bölümleri kes ve",
     "trimSubtitleAfter": "altında tut ✂️",
     "dropAnywhere": "Her yere bırak...",
-    "dragDrop": "Sürükle ve Bırak",
+    "dragDrop": "Videoyu sürükle & bırak",
     "browseMultiple": "Birden fazla klip ekle veya göz atmak için tıkla",
-    "browseSingle": "Veya göz atmak için tıkla",
-    "formats": "MP4, MOV, WebM, MKV"
+    "browseSingle": "ya da göz atmak için tıkla",
+    "formats": "MP4 · MOV · WebM · MKV"
   },
   "trim": {
     "pickVideoFirst": "Önce bir video seçin.",
@@ -111,6 +111,6 @@
     "showInFolder": "Klasörde Göster"
   },
   "footer": {
-    "text": "<channel>#live-video-edit</channel> kanalı için <heart/> ile yapıldı"
+    "text": "<channel>Squik</channel> ile <heart/> yapıldı"
   }
 }
