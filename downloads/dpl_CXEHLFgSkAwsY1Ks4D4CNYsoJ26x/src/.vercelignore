@@ -1,0 +1,15 @@
+.compresso-ref/
+.stitch/
+asar-extract/
+release/
+dist/
+dist-electron/
+node_modules/
+electron/
+src/
+/confetti.gif
+/error.gif
+/gym.gif
+/walky.gif
+mascots.zip
+metadata.json

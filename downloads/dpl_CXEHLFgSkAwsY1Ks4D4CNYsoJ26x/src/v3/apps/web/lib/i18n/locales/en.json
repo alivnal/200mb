@@ -1,0 +1,98 @@
+{
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "tr": "Türkçe"
+  },
+  "app": {
+    "name": "Squik"
+  },
+  "meta": {
+    "description": "Compress academic videos under 200 MB — entirely in your browser."
+  },
+  "common": {
+    "compress": "Compress",
+    "merge": "Merge",
+    "tryAgain": "Try again",
+    "targetUnderMb": "Target: under 200 MB",
+    "originalTarget": "Original: {{size}} · Target: under 200 MB",
+    "mbLimit": "200 MB"
+  },
+  "landing": {
+    "headlineBefore": "Optimize your",
+    "headlineAccent": "academic",
+    "headlineAfter": "videos 🎓",
+    "compressSubtitleBefore": "Compress any video under",
+    "compressSubtitleAfter": "without losing quality 📦",
+    "mergeSubtitleBefore": "Combine multiple clips into one video under",
+    "mergeSubtitleAfter": "🎬",
+    "dropAnywhere": "Drop anywhere...",
+    "dragDrop": "Drag & Drop",
+    "browseMultiple": "Add multiple clips or click to browse",
+    "browseSingle": "Or click to browse",
+    "formats": "MP4, MOV, WebM, MKV"
+  },
+  "errors": {
+    "invalidFile": "Please choose a supported video file (MP4, MOV, WebM, MKV).",
+    "invalidFiles": "Please choose supported video files (MP4, MOV, WebM, MKV).",
+    "needTwoVideos": "Add at least two videos to merge.",
+    "compressionFailed": "Compression failed. Please try again.",
+    "compressionFailedTitle": "Compression Failed",
+    "bridgeFailed": "Desktop bridge failed to load. Reinstall or rebuild the app.",
+    "bridgeUnavailable": "Desktop bridge unavailable.",
+    "dropPathFailed": "Could not read dropped file path.",
+    "mergeMinTwo": "Select at least two videos to merge.",
+    "metadataReadFailed": "Could not read video metadata. The file may be corrupt or unsupported.",
+    "encodingFailed": "FFmpeg encoding failed. The file may be too large for your browser.",
+    "mergeFailed": "FFmpeg merge failed. Clips may be too large for your browser."
+  },
+  "a11y": {
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "remove": "Remove",
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore": "Restore",
+    "close": "Close"
+  },
+  "status": {
+    "mergingVideos": "Merging Videos…",
+    "loadingEncoder": "Loading Encoder…",
+    "compressingVideo": "Compressing Video…",
+    "elapsed": "Elapsed {{time}}",
+    "encoding": "Encoding {{time}}",
+    "wasmHint": "First visit downloads ~25 MB of encoder code.",
+    "keepTabOpen": "Keep this tab open — progress tracks each stage of the job.",
+    "keepWindowOpen": "Keep this window open — progress tracks each stage of the job.",
+    "cancelCompression": "Cancel Compression",
+    "clipsMerged": "{{count}} clips → merged"
+  },
+  "phase": {
+    "preparing": "Preparing video…",
+    "loading": "Loading encoder…",
+    "uploading": "Reading file into browser…",
+    "encoding": "Encoding video…",
+    "finalizing": "Finalizing output…",
+    "complete": "Complete",
+    "preparingMerge": "Preparing merge…",
+    "mergingClips": "Merging clips…"
+  },
+  "success": {
+    "titleBefore": "Compression",
+    "titleAccent": "Complete",
+    "titleAfter": "! 🎉",
+    "description": "Your video has been successfully optimized.",
+    "descriptionWithEncoder": "Your video has been successfully optimized with {{encoder}}.",
+    "mergedFrom": "Merged from {{count}} clips.",
+    "saved": "Saved",
+    "original": "Original",
+    "newSize": "New Size",
+    "encodeTime": "Encode Time",
+    "downloadFile": "Download File",
+    "compressAnother": "Compress Another",
+    "showInFolder": "Show in Folder"
+  },
+  "footer": {
+    "text": "Made with <heart/> for the <channel>#live-video-edit</channel> channel"
+  }
+}

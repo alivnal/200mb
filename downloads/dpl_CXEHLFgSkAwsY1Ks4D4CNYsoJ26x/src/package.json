@@ -1,0 +1,30 @@
+{
+  "name": "video-compressor",
+  "private": true,
+  "version": "4.0.0",
+  "type": "module",
+  "workspaces": [
+    "v3/apps/*",
+    "v3/packages/*",
+    "v4/apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @squish/desktop",
+    "dev:web": "node v3/scripts/sync-squish-core.mjs && node v3/scripts/kill-port.mjs 3001 && npm run dev -w @squish/web",
+    "dev:web:v4": "node v3/scripts/kill-port.mjs 3002 && npm run dev -w @squish/web-v4",
+    "dev:web:v4:fresh": "node v3/scripts/kill-port.mjs 3002 && node v4/scripts/clean-next.mjs && npm run dev -w @squish/web-v4",
+    "build:web": "node v3/scripts/sync-squish-core.mjs && npm run build -w @squish/web",
+    "build:web:v4": "npm run build -w @squish/web-v4",
+    "build:desktop": "npm run build -w @squish/desktop",
+    "build:electron": "npm run build:electron -w @squish/desktop",
+    "sync:squish-core": "node v3/scripts/sync-squish-core.mjs",
+    "dist": "npm run dist -w @squish/desktop",
+    "dist:portable": "npm run dist:portable -w @squish/desktop",
+    "clean": "npm run clean -w @squish/desktop",
+    "lint": "npm run lint -w @squish/web && npm run lint -w @squish/web-v4 && npm run lint -w @squish/desktop",
+    "postinstall": "node -e \"if (!process.env.VERCEL && !process.env.CI) require('child_process').execFileSync(process.execPath, ['v3/scripts/fix-electron.cjs'], {stdio:'inherit'})\""
+  },
+  "dependencies": {
+    "@vercel/speed-insights": "^2.0.0"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "squish-v3",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Squish v3 — browser (WASM) and desktop (Electron) video compression"
+}

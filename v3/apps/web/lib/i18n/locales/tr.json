@@ -1,0 +1,96 @@
+{
+  "language": {
+    "label": "Dil",
+    "en": "English",
+    "tr": "Türkçe"
+  },
+  "app": {
+    "name": "200mb"
+  },
+  "meta": {
+    "description": "Canlı Ders videolarını 200 MB altında sıkıştırın — tamamen tarayıcınızda."
+  },
+  "common": {
+    "compress": "Sıkıştır",
+    "merge": "Birleştir",
+    "tryAgain": "Tekrar dene",
+    "targetUnderMb": "Hedef: 200 MB altı",
+    "originalTarget": "Orijinal: {{size}} · Hedef: 200 MB altı",
+    "mbLimit": "200 MB"
+  },
+  "landing": {
+    "headlineBefore": "",
+    "headlineAccent": "Canlı Ders",
+    "headlineAfter": "videolarını optimize et 🎓",
+    "compressSubtitleBefore": "Herhangi bir videoyu",
+    "compressSubtitleAfter": "altına sıkıştır 📦",
+    "mergeSubtitleBefore": "Birden fazla videonu",
+    "mergeSubtitleAfter": "altında birleştir 🎬",
+    "dropAnywhere": "Her yere bırak...",
+    "dragDrop": "Sürükle ve Bırak",
+    "browseMultiple": "Birden fazla klip ekle veya göz atmak için tıkla",
+    "browseSingle": "Veya göz atmak için tıkla",
+    "formats": "MP4, MOV, WebM, MKV"
+  },
+  "errors": {
+    "invalidFile": "Lütfen desteklenen bir video dosyası seçin (MP4, MOV, WebM, MKV).",
+    "invalidFiles": "Lütfen desteklenen video dosyaları seçin (MP4, MOV, WebM, MKV).",
+    "needTwoVideos": "Birleştirmek için en az iki video ekleyin.",
+    "compressionFailed": "Sıkıştırma başarısız oldu. Lütfen tekrar deneyin.",
+    "compressionFailedTitle": "Sıkıştırma Başarısız",
+    "bridgeFailed": "Masaüstü köprüsü yüklenemedi. Uygulamayı yeniden yükleyin veya derleyin.",
+    "mergeMinTwo": "Birleştirmek için en az iki video seçin.",
+    "metadataReadFailed": "Video meta verileri okunamadı. Dosya bozuk veya desteklenmiyor olabilir.",
+    "encodingFailed": "FFmpeg kodlaması başarısız oldu. Dosya tarayıcınız için çok büyük olabilir.",
+    "mergeFailed": "FFmpeg birleştirmesi başarısız oldu. Klipler tarayıcınız için çok büyük olabilir."
+  },
+  "a11y": {
+    "moveUp": "Yukarı taşı",
+    "moveDown": "Aşağı taşı",
+    "remove": "Kaldır",
+    "minimize": "Küçült",
+    "maximize": "Büyüt",
+    "restore": "Geri yükle",
+    "close": "Kapat"
+  },
+  "status": {
+    "mergingVideos": "Videolar birleştiriliyor…",
+    "loadingEncoder": "Kodlayıcı yükleniyor…",
+    "compressingVideo": "Video sıkıştırılıyor…",
+    "elapsed": "Geçen süre {{time}}",
+    "encoding": "Kodlama {{time}}",
+    "wasmHint": "İlk ziyarette ~25 MB kodlayıcı kodu indirilir.",
+    "keepTabOpen": "Bu sekmeyi açık tutun — ilerleme işin her aşamasını takip eder.",
+    "keepWindowOpen": "Bu pencereyi açık tutun — ilerleme işin her aşamasını takip eder.",
+    "cancelCompression": "Sıkıştırmayı İptal Et",
+    "clipsMerged": "{{count}} klip → birleştirildi"
+  },
+  "phase": {
+    "preparing": "Video hazırlanıyor…",
+    "loading": "Kodlayıcı yükleniyor…",
+    "uploading": "Dosya tarayıcıya okunuyor…",
+    "encoding": "Video kodlanıyor…",
+    "finalizing": "Çıktı tamamlanıyor…",
+    "complete": "Tamamlandı",
+    "preparingMerge": "Birleştirme hazırlanıyor…",
+    "mergingClips": "Klipler birleştiriliyor…"
+  },
+  "success": {
+    "titleBefore": "Sıkıştırma",
+    "titleAccent": "Tamamlandı",
+    "titleAfter": "! 🎉",
+    "description": "Videonuz başarıyla optimize edildi.",
+    "descriptionWithEncoder": "Videonuz {{encoder}} ile başarıyla optimize edildi.",
+    "mergedFrom": "{{count}} klipten birleştirildi.",
+    "saved": "Tasarruf",
+    "original": "Orijinal",
+    "newSize": "Yeni Boyut",
+    "encodeTime": "Kodlama Süresi",
+    "downloadFile": "Dosyayı İndir",
+    "compressAnother": "Başka Video Sıkıştır",
+    "showInFolder": "Klasörde Göster"
+  },
+  "footer": {
+    "text": "<channel>#live-video-edit</channel> kanalı için <heart/> ile yapıldı"
+  }
+}
