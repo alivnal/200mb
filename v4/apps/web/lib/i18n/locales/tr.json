@@ -14,11 +14,11 @@
     "compress": "Sıkıştır",
     "merge": "Birleştir",
     "trim": "Kırp",
-    "trimAndCompress": "Kırp ve Sıkıştır",
     "tryAgain": "Tekrar dene",
     "targetUnderMb": "Hedef: 200 MB altı",
     "originalTarget": "Orijinal: {{size}} · Hedef: 200 MB altı",
-    "mbLimit": "200 MB"
+    "mbLimit": "200 MB",
+    "trimAndCompress": "Kırp ve Sıkıştır"
   },
   "landing": {
     "headlineBefore": "",
@@ -28,13 +28,21 @@
     "compressSubtitleAfter": "altına sıkıştır 📦",
     "mergeSubtitleBefore": "Birden fazla videonu",
     "mergeSubtitleAfter": "altında birleştir 🎬",
-    "trimSubtitleBefore": "İstenmeyen bölümleri kaldır, ardından",
-    "trimSubtitleAfter": "altına sıkıştır ✂️",
+    "trimSubtitleBefore": "İstemediğin bölümleri kes ve",
+    "trimSubtitleAfter": "altında tut ✂️",
     "dropAnywhere": "Her yere bırak...",
     "dragDrop": "Sürükle ve Bırak",
     "browseMultiple": "Birden fazla klip ekle veya göz atmak için tıkla",
     "browseSingle": "Veya göz atmak için tıkla",
     "formats": "MP4, MOV, WebM, MKV"
+  },
+  "trim": {
+    "pickVideoFirst": "Önce bir video seçin.",
+    "duration": "Süre: {{duration}}",
+    "rangesLabel": "Silinecek bölümler",
+    "rangesHint": "Kaldırılacak zaman aralıklarını girin (örn. 00:30 - 01:15). Geri kalan her şey korunur.",
+    "rangesPlaceholder": "00:30 - 01:15\n02:00 - 03:30",
+    "parsedRanges": "{{count}} aralık hazır"
   },
   "errors": {
     "invalidFile": "Lütfen desteklenen bir video dosyası seçin (MP4, MOV, WebM, MKV).",
@@ -47,21 +55,11 @@
     "metadataReadFailed": "Video meta verileri okunamadı. Dosya bozuk veya desteklenmiyor olabilir.",
     "encodingFailed": "FFmpeg kodlaması başarısız oldu. Dosya tarayıcınız için çok büyük olabilir.",
     "mergeFailed": "FFmpeg birleştirmesi başarısız oldu. Klipler tarayıcınız için çok büyük olabilir.",
-    "trimRangeInvalid": "Zaman aralığı okunamadı. 12:32-13:25 veya 1:05:00-1:07:30 gibi formatlar kullanın.",
-    "trimRangeOrder": "Her aralıkta başlangıç, bitişten önce olmalı.",
-    "trimRangeEmpty": "Kaldırılacak en az bir aralık girin.",
-    "trimRangeOutOfBounds": "Bir aralık video süresinin dışında ({{duration}}).",
-    "trimRangeNothingLeft": "Bu aralıklar kaldırılırsa videonun tamamı silinir.",
-    "trimProbeFailed": "Video süresi okunamadı. Başka bir dosya deneyin."
-  },
-  "trim": {
-    "selectedVideo": "Seçilen video",
-    "duration": "Süre: {{duration}}",
-    "rangesLabel": "Kaldırılacak aralıklar",
-    "rangesHint": "Her satıra bir aralık veya virgülle ayırın. Örnek: 12:32-13:25",
-    "rangesPlaceholder": "12:32-13:25\n18:00-18:45",
-    "parsedRanges": "{{count}} aralık kaldırılacak",
-    "pickVideoFirst": "Kırpmak için bir video seçin."
+    "trimProbeFailed": "Video süresi okunamadı. Lütfen farklı bir dosya deneyin.",
+    "trimRangeEmpty": "Silinecek en az bir zaman aralığı girin.",
+    "trimRangeInvalid": "Bir veya daha fazla aralık geçersiz. Format: 00:30 - 01:15",
+    "trimRangeOutOfBounds": "Aralık video süresini aşıyor ({{duration}}).",
+    "trimRangeNothingLeft": "Tüm bölümler silindi — korunacak hiçbir şey kalmadı."
   },
   "a11y": {
     "moveUp": "Yukarı taşı",
@@ -74,6 +72,7 @@
   },
   "status": {
     "mergingVideos": "Videolar birleştiriliyor…",
+    "trimmingVideo": "Video kırpılıyor…",
     "loadingEncoder": "Kodlayıcı yükleniyor…",
     "compressingVideo": "Video sıkıştırılıyor…",
     "elapsed": "Geçen süre {{time}}",
@@ -82,8 +81,7 @@
     "keepTabOpen": "Bu sekmeyi açık tutun — ilerleme işin her aşamasını takip eder.",
     "keepWindowOpen": "Bu pencereyi açık tutun — ilerleme işin her aşamasını takip eder.",
     "cancelCompression": "Sıkıştırmayı İptal Et",
-    "clipsMerged": "{{count}} klip → birleştirildi",
-    "trimmingVideo": "Video kırpılıyor…"
+    "clipsMerged": "{{count}} klip → birleştirildi"
   },
   "phase": {
     "preparing": "Video hazırlanıyor…",
@@ -94,7 +92,7 @@
     "complete": "Tamamlandı",
     "preparingMerge": "Birleştirme hazırlanıyor…",
     "mergingClips": "Klipler birleştiriliyor…",
-    "trimmingClips": "Bölümler kaldırılıyor…"
+    "trimmingClips": "Klipler kırpılıyor…"
   },
   "success": {
     "titleBefore": "Sıkıştırma",
@@ -103,7 +101,7 @@
     "description": "Videonuz başarıyla optimize edildi.",
     "descriptionWithEncoder": "Videonuz {{encoder}} ile başarıyla optimize edildi.",
     "mergedFrom": "{{count}} klipten birleştirildi.",
-    "trimmedFrom": "Sıkıştırmadan önce {{count}} bölüm kaldırıldı.",
+    "trimmedFrom": "{{count}} bölüm kırpıldı.",
     "saved": "Tasarruf",
     "original": "Orijinal",
     "newSize": "Yeni Boyut",

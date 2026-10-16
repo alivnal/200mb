@@ -15,9 +15,9 @@ interface AppShellProps {
 
 export default function AppShell({ children }: AppShellProps) {
   return (
-    <div className="flex flex-col h-[100dvh] w-full overflow-hidden bg-canvas text-ink">
+    <div className="flex flex-col min-h-[100dvh] w-full bg-canvas text-ink">
       <PixelCursor />
-      <div className="app-canvas flex-1 min-h-0 relative">{children}</div>
+      <div className="app-canvas flex-1">{children}</div>
       <AppFooter />
     </div>
   );

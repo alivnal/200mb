@@ -19,11 +19,6 @@ export interface VideoMetadata {
   size?: number;
 }
 
-export interface TrimSegment {
-  startSec: number;
-  endSec: number;
-}
-
 export interface CompressionResult {
   compressedSize: number;
   originalSize: number;
@@ -32,8 +27,6 @@ export interface CompressionResult {
   filename: string;
   encoderLabel?: string;
   clipCount?: number;
-  /** Number of time ranges removed before compression (desktop trim). */
-  trimSegmentCount?: number;
   /** Wall time spent in encode step(s). */
   encodeTimeMs?: number;
 }
@@ -45,6 +38,8 @@ export interface WebCompressionResult extends CompressionResult {
   encodeTimeMs?: number;
   /** Total job time from start to result. */
   totalTimeMs?: number;
+  /** Number of trim segments applied (undefined for non-trim jobs). */
+  trimSegmentCount?: number;
 }
 
 export interface BitrateCalculation {

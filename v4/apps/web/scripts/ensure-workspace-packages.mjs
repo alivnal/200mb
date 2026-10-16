@@ -1,5 +1,6 @@
 /**
- * Sync monorepo packages into v4/apps/web/lib for Vercel builds.
+ * Sync shared lib folders from v3/apps/web/lib into v4/apps/web/lib.
+ * The canonical source lives in v3/apps/web/lib/{squish-core,i18n}.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,12 +9,12 @@ import { fileURLToPath } from 'node:url';
 const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = path.resolve(webRoot, '..', '..', '..');
 
-function syncPackage(packageName, libFolder) {
-  const source = path.join(repoRoot, 'v3/packages', packageName, 'src');
+function syncLib(libFolder) {
+  const source = path.join(repoRoot, 'v3/apps/web/lib', libFolder);
   const target = path.join(webRoot, 'lib', libFolder);
 
   if (!fs.existsSync(source)) {
-    console.error(`ensure-workspace-packages: missing v3/packages/${packageName}/src`);
+    console.error(`ensure-workspace-packages: missing v3/apps/web/lib/${libFolder}`);
     process.exit(1);
   }
 
@@ -23,5 +24,5 @@ function syncPackage(packageName, libFolder) {
   console.log(`ensure-workspace-packages: updated lib/${libFolder}`);
 }
 
-syncPackage('squish-core', 'squish-core');
-syncPackage('i18n', 'i18n');
+syncLib('squish-core');
+syncLib('i18n');

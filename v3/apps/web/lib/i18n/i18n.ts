@@ -46,7 +46,8 @@ export type CompressionPhaseKey =
   | 'finalizing'
   | 'complete'
   | 'preparingMerge'
-  | 'mergingClips';
+  | 'mergingClips'
+  | 'trimmingClips';
 
 export function translatePhase(phase: CompressionPhaseKey): string {
   return getI18nInstance().t(`phase.${phase}`);

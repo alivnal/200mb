@@ -38,6 +38,8 @@ export interface WebCompressionResult extends CompressionResult {
   encodeTimeMs?: number;
   /** Total job time from start to result. */
   totalTimeMs?: number;
+  /** Number of trim segments applied (undefined for non-trim jobs). */
+  trimSegmentCount?: number;
 }
 
 export interface BitrateCalculation {

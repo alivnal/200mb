@@ -1,4 +1,4 @@
-# Video Compressor (Squish v3)
+# 200mb — Video Compressor (Squish)
 
 Monorepo for browser and desktop video compression under 200 MB.
 
@@ -6,31 +6,48 @@ Monorepo for browser and desktop video compression under 200 MB.
 
 ```
 v3/
-├── apps/web/       # Next.js browser app (Squik) — FFmpeg.wasm
-├── apps/desktop/   # Electron desktop app — native FFmpeg
-├── packages/squish-core/
-└── scripts/
+├── apps/web/          # Next.js browser app (v3) — FFmpeg.wasm, port 3001
+├── apps/desktop/      # Electron desktop app — native FFmpeg
+├── packages/          # Package stubs (squish-core, i18n) for workspace resolution
+└── scripts/           # Dev helpers (sync-squish-core, kill-port, fix-electron)
+
+v4/
+└── apps/web/          # Next.js browser app (v4) — trim support, port 3002
 ```
 
-See [v3/README.md](v3/README.md) for details. Legacy pre-v3 folders are documented in [LEGACY.md](LEGACY.md).
+**Canonical shared source** lives in `v3/apps/web/lib/squish-core/` and `v3/apps/web/lib/i18n/`.
+The v4 predev script (`ensure-workspace-packages.mjs`) syncs these into `v4/apps/web/lib/` automatically on every `npm run dev`.
 
 ## Quick start
 
 ```bash
 npm install
-npm run dev:web      # http://localhost:3001
-npm run dev          # Electron desktop → http://localhost:3000
+
+# v3 web app  → http://localhost:3001
+npm run dev:web
+
+# v4 web app  → http://localhost:3002
+npm run dev:web:v4
+
+# Electron desktop
+npm run dev
 ```
 
 ## Build & deploy
 
 ```bash
-npm run build:web    # Production web build
-npm run dist         # Desktop portable/installer → v3/apps/desktop/release/
+# Production web builds
+npm run build:web        # v3
+npm run build:web:v4     # v4
+
+# Desktop portable/installer
+npm run dist
 ```
 
-**Vercel:** set Root Directory to `v3/apps/web`.
+**Vercel:** root `vercel.json` builds the v3 web app (`npm run build:web`).
+To deploy v4, set Root Directory to `v4/apps/web` and Build Command to `npm run build`.
 
-## Fonts
+## Notes
 
-Geist + Geist Mono (Fontsource) on web and desktop.
+- Legacy pre-v3 files are documented in [LEGACY.md](LEGACY.md).
+- When modifying shared types/functions (squish-core, i18n), always edit the **v3 source** (`v3/apps/web/lib/`). The v4 sync script will pick up changes automatically.

@@ -52,7 +52,10 @@ function nearestKeyframeDistance(times: number[], cutSec: number): number {
   return Number.isFinite(best) ? best : 0;
 }
 
-/** Whether this file is a candidate for Mediabunny hybrid trim. */
+/**
+ * Whether this file is a candidate for Mediabunny hybrid trim.
+ * Opens a single Input instance and checks codec + conversion validity.
+ */
 export async function canUseHybridTrim(file: File): Promise<boolean> {
   if (!HYBRID_EXTENSIONS.has(extLower(file.name))) return false;
   if (file.size === 0) return false;
@@ -72,11 +75,13 @@ export async function canUseHybridTrim(file: File): Promise<boolean> {
       format: new Mp4OutputFormat(),
       target: new BufferTarget(),
     });
-    const conversion = await Conversion.init({
-      input,
-      output,
-      tracks: 'primary',
-    });
+
+    let conversion: Conversion;
+    try {
+      conversion = await Conversion.init({ input, output, tracks: 'primary' });
+    } catch {
+      return false;
+    }
     return conversion.isValid;
   } catch {
     return false;
@@ -85,21 +90,25 @@ export async function canUseHybridTrim(file: File): Promise<boolean> {
 
 /** Keyframe timestamps (seconds) for boundary-snap UI hints. */
 export async function probeKeyframeTimes(file: File): Promise<number[]> {
-  const input = new Input({
-    formats: [new Mp4InputFormat()],
-    source: new BlobSource(file),
-  });
-  const videoTrack = await input.getPrimaryVideoTrack();
-  if (!videoTrack) return [];
+  try {
+    const input = new Input({
+      formats: [new Mp4InputFormat()],
+      source: new BlobSource(file),
+    });
+    const videoTrack = await input.getPrimaryVideoTrack();
+    if (!videoTrack) return [];
 
-  const sink = new EncodedPacketSink(videoTrack);
-  const times: number[] = [];
-  let packet = await sink.getFirstKeyPacket();
-  while (packet) {
-    times.push(packet.timestamp);
-    packet = await sink.getNextKeyPacket(packet);
+    const sink = new EncodedPacketSink(videoTrack);
+    const times: number[] = [];
+    let packet = await sink.getFirstKeyPacket();
+    while (packet) {
+      times.push(packet.timestamp);
+      packet = await sink.getNextKeyPacket(packet);
+    }
+    return times;
+  } catch {
+    return [];
   }
-  return times;
 }
 
 async function extractKeepSegment(
@@ -121,15 +130,20 @@ async function extractKeepSegment(
     target: new BufferTarget(),
   });
 
-  const conversion = await Conversion.init({
-    input,
-    output,
-    tracks: 'primary',
-    trim: {
-      start: segment.startSec,
-      end: segment.endSec,
-    },
-  });
+  let conversion: Conversion;
+  try {
+    conversion = await Conversion.init({
+      input,
+      output,
+      tracks: 'primary',
+      trim: {
+        start: segment.startSec,
+        end: segment.endSec,
+      },
+    });
+  } catch (err) {
+    throw new Error(`Hybrid trim init failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   if (!conversion.isValid) {
     throw new Error('Hybrid trim conversion invalid');
@@ -154,49 +168,41 @@ async function concatMp4Parts(
   parts: Uint8Array[],
   outputName: string,
 ): Promise<void> {
+  if (parts.length === 0) throw new Error('No parts to concat');
+
   const listName = 'concat_list.txt';
   const partNames: string[] = [];
 
-  for (let i = 0; i < parts.length; i++) {
-    const partName = `hybrid_part_${i}.mp4`;
-    await ffmpeg.writeFile(partName, parts[i]);
-    partNames.push(partName);
-  }
+  try {
+    for (let i = 0; i < parts.length; i++) {
+      const partName = `hybrid_part_${i}.mp4`;
+      await ffmpeg.writeFile(partName, parts[i]);
+      partNames.push(partName);
+    }
 
-  const listContent = partNames.map((name) => `file '${name}'`).join('\n');
-  await ffmpeg.writeFile(listName, listContent);
+    const listContent = partNames.map((name) => `file '${name}'`).join('\n');
+    await ffmpeg.writeFile(listName, listContent);
 
-  const code = await ffmpeg.exec([
-    '-y',
-    '-hide_banner',
-    '-loglevel',
-    'error',
-    '-f',
-    'concat',
-    '-safe',
-    '0',
-    '-i',
-    listName,
-    '-c',
-    'copy',
-    '-movflags',
-    '+faststart',
-    outputName,
-  ]);
+    const code = await ffmpeg.exec([
+      '-y', '-hide_banner', '-loglevel', 'error',
+      '-f', 'concat',
+      '-safe', '0',
+      '-i', listName,
+      '-c', 'copy',
+      '-movflags', '+faststart',
+      outputName,
+    ]);
 
-  await ffmpeg.deleteFile(listName).catch(() => {});
-  for (const partName of partNames) {
-    await ffmpeg.deleteFile(partName).catch(() => {});
-  }
-
-  if (code !== 0) {
-    throw new Error('Hybrid concat failed');
+    if (code !== 0) throw new Error('Hybrid concat failed (ffmpeg exit code non-zero)');
+  } finally {
+    await ffmpeg.deleteFile(listName).catch(() => {});
+    await Promise.all(partNames.map((name) => ffmpeg.deleteFile(name).catch(() => {})));
   }
 }
 
 /**
  * Mediabunny hybrid trim: copy packets where possible, transcode at cut boundaries.
- * Returns null when caller should use FFmpeg fallback.
+ * Returns null when the caller should fall back to FFmpeg.
  */
 export async function trimHybrid(
   file: File,
@@ -217,13 +223,9 @@ export async function trimHybrid(
     sourceMeta.duration,
   );
 
-  let keyframeTimes: number[] = [];
-  try {
-    keyframeTimes = await probeKeyframeTimes(file);
-  } catch {
-    return null;
-  }
+  const keyframeTimes = await probeKeyframeTimes(file);
 
+  // Calculate max boundary snap for UI hints.
   const cutPoints = new Set<number>();
   for (const seg of keepSegments) {
     cutPoints.add(seg.startSec);
@@ -243,17 +245,23 @@ export async function trimHybrid(
     const segment = keepSegments[i];
     const segmentOffset = 0.05 + i * segmentSpan;
 
+    let bytes: Uint8Array;
     try {
-      const bytes = await extractKeepSegment(file, segment, {
+      bytes = await extractKeepSegment(file, segment, {
         isCancelled,
-        onProgress: (ratio) => {
-          onProgress?.(segmentOffset + ratio * segmentSpan);
-        },
+        onProgress: (ratio) => onProgress?.(segmentOffset + ratio * segmentSpan),
       });
-      partBytes.push(bytes);
-    } catch {
+    } catch (err) {
+      console.warn(`[Squish] Hybrid trim segment ${i} failed, falling back to FFmpeg:`, err);
       return null;
     }
+
+    if (bytes.byteLength === 0) {
+      console.warn(`[Squish] Hybrid trim segment ${i} produced empty output, falling back.`);
+      return null;
+    }
+
+    partBytes.push(bytes);
   }
 
   if (isCancelled?.()) throw new CompressionCancelledError();
@@ -262,26 +270,43 @@ export async function trimHybrid(
   if (partBytes.length === 1) {
     finalBytes = partBytes[0];
   } else {
-    if (!ffmpeg) return null;
+    if (!ffmpeg) {
+      console.warn('[Squish] Hybrid concat needs FFmpeg but it was not provided, falling back.');
+      return null;
+    }
     const mergedName = 'hybrid_merged.mp4';
     try {
       await concatMp4Parts(ffmpeg, partBytes, mergedName);
       const data = await ffmpeg.readFile(mergedName);
       finalBytes = data instanceof Uint8Array ? data : new TextEncoder().encode(data);
-      await ffmpeg.deleteFile(mergedName).catch(() => {});
-    } catch {
+    } catch (err) {
+      console.warn('[Squish] Hybrid concat failed, falling back to FFmpeg:', err);
       return null;
+    } finally {
+      await ffmpeg.deleteFile(mergedName).catch(() => {});
     }
+  }
+
+  if (finalBytes.byteLength === 0) {
+    console.warn('[Squish] Hybrid trim produced empty final output, falling back.');
+    return null;
   }
 
   onProgress?.(1);
 
   const blob = new Blob([finalBytes], { type: 'video/mp4' });
-  const input = new Input({
-    formats: [new Mp4InputFormat()],
-    source: new BlobSource(blob),
-  });
-  const hasAudio = (await input.getPrimaryAudioTrack()) !== null;
+
+  // Check for audio track in the output blob.
+  let hasAudio = false;
+  try {
+    const checkInput = new Input({
+      formats: [new Mp4InputFormat()],
+      source: new BlobSource(blob),
+    });
+    hasAudio = (await checkInput.getPrimaryAudioTrack()) !== null;
+  } catch {
+    hasAudio = false;
+  }
 
   console.info('[Squish] Trim path: hybrid-copy');
 

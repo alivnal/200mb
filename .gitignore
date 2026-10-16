@@ -1,0 +1,10 @@
+node_modules
+.next
+dist
+dist-electron
+release
+downloads
+*.DS_Store
+
+# FFmpeg WASM binary — too large for git, copied from node_modules at build time
+v4/apps/web/public/ffmpeg/

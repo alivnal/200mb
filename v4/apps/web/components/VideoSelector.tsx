@@ -229,14 +229,14 @@ export default function VideoSelector({
       return;
     }
 
-    let deleteSegments: TrimSegment[];
-    try {
-      deleteSegments = parseDeleteRangeText(rangeText);
-    } catch (err) {
-      const code = err instanceof Error ? err.message : 'invalidRange';
-      if (code === 'emptyInput') setError(t('errors.trimRangeEmpty'));
-      else if (code === 'invalidOrder') setError(t('errors.trimRangeOrder'));
-      else setError(t('errors.trimRangeInvalid'));
+    if (!rangeText.trim()) {
+      setError(t('errors.trimRangeEmpty'));
+      return;
+    }
+
+    const deleteSegments = parseDeleteRangeText(rangeText);
+    if (deleteSegments.length === 0) {
+      setError(t('errors.trimRangeInvalid'));
       return;
     }
 

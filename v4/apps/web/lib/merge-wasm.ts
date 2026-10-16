@@ -6,13 +6,13 @@
 import { getI18nInstance } from '@squish/i18n';
 import { fetchFile } from '@ffmpeg/util';
 import type { FFmpeg } from '@ffmpeg/ffmpeg';
+import { CompressionCancelledError, type VideoProbeMetadata } from '@/lib/squish-core';
+import { extFromName, loadFFmpeg, probeVideoFile } from './compress-wasm';
+import { WEB_MERGE_MAX_DIMENSION } from './web-compress-strategy';
 
 function t(key: string): string {
   return getI18nInstance().t(key);
 }
-import { CompressionCancelledError, type VideoProbeMetadata } from '@/lib/squish-core';
-import { extFromName, loadFFmpeg, probeVideoFile } from './compress-wasm';
-import { WEB_MERGE_MAX_DIMENSION } from './web-compress-strategy';
 
 function evenDimension(value: number): number {
   const rounded = Math.max(2, Math.round(value));
@@ -38,10 +38,9 @@ async function probeHasAudio(ffmpeg: FFmpeg, inputName: string): Promise<boolean
   };
   ffmpeg.on('log', handler);
   try {
-    // Header probe only — avoid decoding the entire file.
     await ffmpeg.exec(['-hide_banner', '-i', inputName]);
   } catch {
-    // ffmpeg -i exits non-zero when no output is specified.
+    // ffmpeg -i exits non-zero when no output is specified — that's expected.
   } finally {
     ffmpeg.off('log', handler);
   }
@@ -97,26 +96,23 @@ function buildFilterMergeArgs(
     args.push('-an');
   }
   args.push(
-    '-c:v',
-    'libx264',
-    '-preset',
-    'ultrafast',
-    '-tune',
-    'zerolatency',
-    '-profile:v',
-    'baseline',
-    '-x264-params',
-    'ref=1:me=dia:subme=0:8x8dct=0:weightp=0',
-    '-threads',
-    '1',
-    '-crf',
-    '28',
-    '-movflags',
-    '+faststart',
+    '-c:v', 'libx264',
+    '-preset', 'ultrafast',
+    '-tune', 'zerolatency',
+    '-profile:v', 'baseline',
+    '-x264-params', 'ref=1:me=dia:subme=0:8x8dct=0:weightp=0',
+    '-threads', '1',
+    '-crf', '28',
+    '-movflags', '+faststart',
     outputName,
   );
 
   return args;
+}
+
+/** Estimate upload time to WASM FS from byte count. */
+function estimateUploadMs(bytes: number): number {
+  return Math.max(3000, (bytes / (80 * 1024 * 1024)) * 1000);
 }
 
 export async function mergeVideosWasm(
@@ -132,66 +128,101 @@ export async function mergeVideosWasm(
   }
 
   const { onProgress, onLoadProgress, isCancelled } = options ?? {};
+  const totalInputSize = files.reduce((s, f) => s + f.size, 0);
+
+  // ── Phase 1: load FFmpeg + probe all files in parallel ──────────────
   onLoadProgress?.(0);
-  const ffmpeg = await loadFFmpeg(onLoadProgress);
+  const [ffmpeg, ...probes] = await Promise.all([
+    loadFFmpeg(onLoadProgress),
+    ...files.map((f) => probeVideoFile(f)),
+  ]);
   if (isCancelled?.()) throw new CompressionCancelledError();
 
-  const probes: VideoProbeMetadata[] = [];
-  let totalInputSize = 0;
-  for (const file of files) {
-    probes.push(await probeVideoFile(file));
-    totalInputSize += file.size;
-    if (isCancelled?.()) throw new CompressionCancelledError();
-  }
-
-  const inputNames: string[] = [];
-  for (let i = 0; i < files.length; i++) {
-    const inputName = `merge_input_${i}${extFromName(files[i].name)}`;
-    inputNames.push(inputName);
-    await ffmpeg.writeFile(inputName, await fetchFile(files[i]));
-    if (isCancelled?.()) throw new CompressionCancelledError();
-  }
-
-  const hasAudio: boolean[] = [];
-  for (const inputName of inputNames) {
-    hasAudio.push(await probeHasAudio(ffmpeg, inputName));
-    if (isCancelled?.()) throw new CompressionCancelledError();
-  }
-
-  const totalDurationSeconds = probes.reduce((sum, p) => sum + p.duration, 0);
+  const inputNames = files.map((f, i) => `merge_input_${i}${extFromName(f.name)}`);
   const outputName = 'merged.mp4';
-  const args = buildFilterMergeArgs(inputNames, probes, hasAudio, outputName);
 
-  const progressHandler = ({ progress }: { progress: number }) => {
-    if (isCancelled?.()) return;
-    const ratio = totalDurationSeconds > 0 ? Math.min(0.99, progress) : progress;
-    onProgress?.(ratio);
-  };
-
-  ffmpeg.on('progress', progressHandler);
   try {
-    const code = await ffmpeg.exec(args);
-    if (isCancelled?.()) throw new CompressionCancelledError();
-    if (code !== 0) {
-      throw new Error(t('errors.mergeFailed'));
+    // ── Phase 2: upload files to WASM FS with per-file progress ─────────
+    const totalBytes = totalInputSize;
+    let uploadedBytes = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      if (isCancelled?.()) throw new CompressionCancelledError();
+
+      const file = files[i];
+      const uploadStart = Date.now();
+      const budget = estimateUploadMs(file.size);
+
+      // Tick progress during fetch+write
+      const ticker = window.setInterval(() => {
+        if (isCancelled?.()) return;
+        const ratio = Math.min(0.95, (Date.now() - uploadStart) / budget);
+        const fileFraction = file.size / totalBytes;
+        onProgress?.((uploadedBytes / totalBytes) + ratio * fileFraction);
+      }, 200);
+
+      try {
+        await ffmpeg.writeFile(inputNames[i], await fetchFile(file));
+      } finally {
+        window.clearInterval(ticker);
+      }
+
+      uploadedBytes += file.size;
+      onProgress?.(uploadedBytes / totalBytes);
+      if (isCancelled?.()) throw new CompressionCancelledError();
     }
+
+    // ── Phase 3: probe audio for each input ──────────────────────────────
+    const hasAudio: boolean[] = await Promise.all(
+      inputNames.map((name) => probeHasAudio(ffmpeg, name)),
+    );
+    if (isCancelled?.()) throw new CompressionCancelledError();
+
+    // ── Phase 4: merge encode ────────────────────────────────────────────
+    const totalDurationSeconds = probes.reduce((s, p) => s + p.duration, 0);
+    const args = buildFilterMergeArgs(inputNames, probes, hasAudio, outputName);
+
+    const progressHandler = ({ progress }: { progress: number }) => {
+      if (isCancelled?.()) return;
+      const ratio = totalDurationSeconds > 0 ? Math.min(0.99, progress) : progress;
+      onProgress?.(ratio);
+    };
+
+    ffmpeg.on('progress', progressHandler);
+    let code: number;
+    try {
+      code = await ffmpeg.exec(args);
+    } finally {
+      ffmpeg.off('progress', progressHandler);
+    }
+
+    if (isCancelled?.()) throw new CompressionCancelledError();
+    if (code !== 0) throw new Error(t('errors.mergeFailed'));
+
+    // ── Phase 5: read output + build metadata from probed dims ───────────
+    const data = await ffmpeg.readFile(outputName);
+    const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(data);
+    const blob = new Blob([bytes], { type: 'video/mp4' });
+
+    // Derive merged metadata: use probed dims/duration, avoid a second FFmpeg probe.
+    const maxW = Math.max(...probes.map((p) => p.width));
+    const maxH = Math.max(...probes.map((p) => p.height));
+    const capped = capMergeDimensions(maxW, maxH);
+    const mergedMeta: VideoProbeMetadata = {
+      name: 'merged.mp4',
+      size: blob.size,
+      duration: totalDurationSeconds,
+      width: capped.width,
+      height: capped.height,
+    };
+
+    onProgress?.(1);
+    return { blob, metadata: mergedMeta, totalInputSize };
   } finally {
-    ffmpeg.off('progress', progressHandler);
+    // Always clean up WASM FS — even on error or cancellation.
+    await Promise.all([
+      ...inputNames.map((name) => ffmpeg.deleteFile(name).catch(() => {})),
+      ffmpeg.deleteFile(outputName).catch(() => {}),
+    ]);
   }
-
-  const data = await ffmpeg.readFile(outputName);
-  const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(data);
-  const blob = new Blob([bytes], { type: 'video/mp4' });
-
-  const mergedMeta = await probeVideoFile(
-    new File([blob], 'merged.mp4', { type: 'video/mp4' }),
-  );
-
-  for (const inputName of inputNames) {
-    await ffmpeg.deleteFile(inputName).catch(() => {});
-  }
-  await ffmpeg.deleteFile(outputName).catch(() => {});
-
-  onProgress?.(1);
-  return { blob, metadata: mergedMeta, totalInputSize };
 }

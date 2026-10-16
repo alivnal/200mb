@@ -100,18 +100,51 @@ export async function probeVideoFile(file: File): Promise<VideoProbeMetadata> {
 }
 
 export async function loadFFmpeg(onLoadProgress?: (ratio: number) => void): Promise<FFmpeg> {
-  if (ffmpegInstance) return ffmpegInstance;
+  if (ffmpegInstance) {
+    onLoadProgress?.(1);
+    return ffmpegInstance;
+  }
   if (loadPromise) return loadPromise;
 
   loadPromise = (async () => {
     const ffmpeg = new FFmpeg();
+
+    // Track WASM download progress via the log channel.
+    // @ffmpeg/ffmpeg emits a 'progress' event during toBlobURL fetch.
     ffmpeg.on('log', () => {});
 
-    const baseURL = `https://unpkg.com/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/esm`;
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-    });
+    // Prefer local public/ bundle (fast, no CDN dependency, Vercel-safe).
+    // Fall back to unpkg only if the local fetch fails (e.g. first local dev without the file).
+    const localBase = '/ffmpeg';
+    const cdnBase = `https://unpkg.com/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/esm`;
+
+    const tryLoad = async (base: string) => {
+      await ffmpeg.load({
+        coreURL: await toBlobURL(
+          `${base}/ffmpeg-core.js`,
+          'text/javascript',
+          !!onLoadProgress,
+          ({ received, total }) => {
+            if (total > 0) onLoadProgress?.((received / total) * 0.3);
+          },
+        ),
+        wasmURL: await toBlobURL(
+          `${base}/ffmpeg-core.wasm`,
+          'application/wasm',
+          !!onLoadProgress,
+          ({ received, total }) => {
+            if (total > 0) onLoadProgress?.(0.3 + (received / total) * 0.7);
+          },
+        ),
+      });
+    };
+
+    try {
+      await tryLoad(localBase);
+    } catch {
+      console.warn('[Squish] Local FFmpeg bundle not found, falling back to CDN.');
+      await tryLoad(cdnBase);
+    }
 
     onLoadProgress?.(1);
     ffmpegInstance = ffmpeg;
@@ -512,8 +545,8 @@ export async function trimAndCompressVideosWasm(
   const { totalKeepDuration } = resolveTrimSegments(deleteSegments, sourceMeta.duration);
   const skipCeiling = proportionalSizeCeiling(
     sourceMeta.size,
-    sourceMeta.duration,
     totalKeepDuration,
+    sourceMeta.duration,
   );
 
   const trimStarted = Date.now();

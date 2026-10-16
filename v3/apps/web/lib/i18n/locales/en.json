@@ -13,10 +13,12 @@
   "common": {
     "compress": "Compress",
     "merge": "Merge",
+    "trim": "Trim",
     "tryAgain": "Try again",
     "targetUnderMb": "Target: under 200 MB",
     "originalTarget": "Original: {{size}} · Target: under 200 MB",
-    "mbLimit": "200 MB"
+    "mbLimit": "200 MB",
+    "trimAndCompress": "Trim & Compress"
   },
   "landing": {
     "headlineBefore": "Optimize your",
@@ -26,11 +28,21 @@
     "compressSubtitleAfter": "without losing quality 📦",
     "mergeSubtitleBefore": "Combine multiple clips into one video under",
     "mergeSubtitleAfter": "🎬",
+    "trimSubtitleBefore": "Cut unwanted sections and keep under",
+    "trimSubtitleAfter": "✂️",
     "dropAnywhere": "Drop anywhere...",
     "dragDrop": "Drag & Drop",
     "browseMultiple": "Add multiple clips or click to browse",
     "browseSingle": "Or click to browse",
     "formats": "MP4, MOV, WebM, MKV"
+  },
+  "trim": {
+    "pickVideoFirst": "Pick a video first.",
+    "duration": "Duration: {{duration}}",
+    "rangesLabel": "Sections to delete",
+    "rangesHint": "Enter time ranges to remove (e.g. 00:30 - 01:15). Everything else will be kept.",
+    "rangesPlaceholder": "00:30 - 01:15\n02:00 - 03:30",
+    "parsedRanges": "{{count}} range(s) ready"
   },
   "errors": {
     "invalidFile": "Please choose a supported video file (MP4, MOV, WebM, MKV).",
@@ -44,7 +56,12 @@
     "mergeMinTwo": "Select at least two videos to merge.",
     "metadataReadFailed": "Could not read video metadata. The file may be corrupt or unsupported.",
     "encodingFailed": "FFmpeg encoding failed. The file may be too large for your browser.",
-    "mergeFailed": "FFmpeg merge failed. Clips may be too large for your browser."
+    "mergeFailed": "FFmpeg merge failed. Clips may be too large for your browser.",
+    "trimProbeFailed": "Could not read video duration. Please try a different file.",
+    "trimRangeEmpty": "Enter at least one time range to delete.",
+    "trimRangeInvalid": "One or more ranges are invalid. Use format: 00:30 - 01:15",
+    "trimRangeOutOfBounds": "Range exceeds video duration ({{duration}}).",
+    "trimRangeNothingLeft": "All sections deleted — nothing left to keep."
   },
   "a11y": {
     "moveUp": "Move up",
@@ -57,6 +74,7 @@
   },
   "status": {
     "mergingVideos": "Merging Videos…",
+    "trimmingVideo": "Trimming Video…",
     "loadingEncoder": "Loading Encoder…",
     "compressingVideo": "Compressing Video…",
     "elapsed": "Elapsed {{time}}",
@@ -75,7 +93,8 @@
     "finalizing": "Finalizing output…",
     "complete": "Complete",
     "preparingMerge": "Preparing merge…",
-    "mergingClips": "Merging clips…"
+    "mergingClips": "Merging clips…",
+    "trimmingClips": "Trimming clips…"
   },
   "success": {
     "titleBefore": "Compression",
@@ -84,6 +103,7 @@
     "description": "Your video has been successfully optimized.",
     "descriptionWithEncoder": "Your video has been successfully optimized with {{encoder}}.",
     "mergedFrom": "Merged from {{count}} clips.",
+    "trimmedFrom": "Trimmed {{count}} section(s).",
     "saved": "Saved",
     "original": "Original",
     "newSize": "New Size",

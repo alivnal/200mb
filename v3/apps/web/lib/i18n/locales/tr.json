@@ -13,10 +13,12 @@
   "common": {
     "compress": "Sıkıştır",
     "merge": "Birleştir",
+    "trim": "Kırp",
     "tryAgain": "Tekrar dene",
     "targetUnderMb": "Hedef: 200 MB altı",
     "originalTarget": "Orijinal: {{size}} · Hedef: 200 MB altı",
-    "mbLimit": "200 MB"
+    "mbLimit": "200 MB",
+    "trimAndCompress": "Kırp ve Sıkıştır"
   },
   "landing": {
     "headlineBefore": "",
@@ -26,11 +28,21 @@
     "compressSubtitleAfter": "altına sıkıştır 📦",
     "mergeSubtitleBefore": "Birden fazla videonu",
     "mergeSubtitleAfter": "altında birleştir 🎬",
+    "trimSubtitleBefore": "İstemediğin bölümleri kes ve",
+    "trimSubtitleAfter": "altında tut ✂️",
     "dropAnywhere": "Her yere bırak...",
     "dragDrop": "Sürükle ve Bırak",
     "browseMultiple": "Birden fazla klip ekle veya göz atmak için tıkla",
     "browseSingle": "Veya göz atmak için tıkla",
     "formats": "MP4, MOV, WebM, MKV"
+  },
+  "trim": {
+    "pickVideoFirst": "Önce bir video seçin.",
+    "duration": "Süre: {{duration}}",
+    "rangesLabel": "Silinecek bölümler",
+    "rangesHint": "Kaldırılacak zaman aralıklarını girin (örn. 00:30 - 01:15). Geri kalan her şey korunur.",
+    "rangesPlaceholder": "00:30 - 01:15\n02:00 - 03:30",
+    "parsedRanges": "{{count}} aralık hazır"
   },
   "errors": {
     "invalidFile": "Lütfen desteklenen bir video dosyası seçin (MP4, MOV, WebM, MKV).",
@@ -42,7 +54,12 @@
     "mergeMinTwo": "Birleştirmek için en az iki video seçin.",
     "metadataReadFailed": "Video meta verileri okunamadı. Dosya bozuk veya desteklenmiyor olabilir.",
     "encodingFailed": "FFmpeg kodlaması başarısız oldu. Dosya tarayıcınız için çok büyük olabilir.",
-    "mergeFailed": "FFmpeg birleştirmesi başarısız oldu. Klipler tarayıcınız için çok büyük olabilir."
+    "mergeFailed": "FFmpeg birleştirmesi başarısız oldu. Klipler tarayıcınız için çok büyük olabilir.",
+    "trimProbeFailed": "Video süresi okunamadı. Lütfen farklı bir dosya deneyin.",
+    "trimRangeEmpty": "Silinecek en az bir zaman aralığı girin.",
+    "trimRangeInvalid": "Bir veya daha fazla aralık geçersiz. Format: 00:30 - 01:15",
+    "trimRangeOutOfBounds": "Aralık video süresini aşıyor ({{duration}}).",
+    "trimRangeNothingLeft": "Tüm bölümler silindi — korunacak hiçbir şey kalmadı."
   },
   "a11y": {
     "moveUp": "Yukarı taşı",
@@ -55,6 +72,7 @@
   },
   "status": {
     "mergingVideos": "Videolar birleştiriliyor…",
+    "trimmingVideo": "Video kırpılıyor…",
     "loadingEncoder": "Kodlayıcı yükleniyor…",
     "compressingVideo": "Video sıkıştırılıyor…",
     "elapsed": "Geçen süre {{time}}",
@@ -73,7 +91,8 @@
     "finalizing": "Çıktı tamamlanıyor…",
     "complete": "Tamamlandı",
     "preparingMerge": "Birleştirme hazırlanıyor…",
-    "mergingClips": "Klipler birleştiriliyor…"
+    "mergingClips": "Klipler birleştiriliyor…",
+    "trimmingClips": "Klipler kırpılıyor…"
   },
   "success": {
     "titleBefore": "Sıkıştırma",
@@ -82,6 +101,7 @@
     "description": "Videonuz başarıyla optimize edildi.",
     "descriptionWithEncoder": "Videonuz {{encoder}} ile başarıyla optimize edildi.",
     "mergedFrom": "{{count}} klipten birleştirildi.",
+    "trimmedFrom": "{{count}} bölüm kırpıldı.",
     "saved": "Tasarruf",
     "original": "Orijinal",
     "newSize": "Yeni Boyut",

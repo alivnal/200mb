@@ -8,23 +8,7 @@ export {
   type WebCompressionResult,
   type BitrateCalculation,
   type EncodePass,
-  type TrimSegment,
 } from './types';
-export {
-  parseTimestampToSeconds,
-  formatTimestamp,
-  parseDeleteRangeText,
-  mergeTrimSegments,
-  deleteSegmentsToKeepSegments,
-  validateDeleteSegments,
-  totalKeepDuration,
-  totalDeletedDuration,
-  verifyTrimmedDuration,
-  estimateSourceBitrateBps,
-  proportionalSizeCeiling,
-  type TrimValidationCode,
-  type TrimDurationVerificationCode,
-} from './trim';
 export {
   DEGRADATION_PASSES,
   stepDownDimension,
@@ -41,3 +25,19 @@ export {
   mapAttemptProgress,
 } from './compress-strategy';
 export { formatBytes } from './format';
+export {
+  parseTimestampToSeconds,
+  formatTimestamp,
+  parseDeleteRangeText,
+  mergeTrimSegments,
+  deleteSegmentsToKeepSegments,
+  validateDeleteSegments,
+  totalKeepDuration,
+  totalDeletedDuration,
+  verifyTrimmedDuration,
+  estimateSourceBitrateBps,
+  proportionalSizeCeiling,
+  type TrimSegment,
+  type TrimValidationCode,
+  type TrimDurationVerificationCode,
+} from './trim';

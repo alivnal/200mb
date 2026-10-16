@@ -70,7 +70,7 @@ export function resolveTrimSegments(
   }
 
   const totalKeepDuration = keepSegments.reduce(
-    (sum, segment) => sum + (segment.endSec - segment.startSec),
+    (sum: number, segment: TrimSegment) => sum + (segment.endSec - segment.startSec),
     0,
   );
 
