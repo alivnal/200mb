@@ -58,14 +58,15 @@ const GLYPHS: Record<string, number[][]> = {
   ],
 };
 
+// Classic lightning bolt: wide top-right → narrow waist → wide bottom-left
 const BOLT: number[][] = [
-  [0, 0, 1, 1, 0],
+  [0, 1, 1, 1, 1],
+  [0, 1, 1, 1, 0],
   [0, 1, 1, 0, 0],
   [1, 1, 1, 1, 0],
-  [0, 0, 1, 0, 0],
-  [0, 1, 1, 1, 1],
-  [0, 1, 1, 0, 0],
-  [0, 1, 0, 0, 0],
+  [0, 0, 1, 1, 0],
+  [0, 0, 0, 1, 0],
+  [0, 0, 0, 1, 0],
 ];
 
 const WORD = ['S', 'Q', 'U', 'I', 'K'];

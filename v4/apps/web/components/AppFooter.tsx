@@ -20,15 +20,18 @@ export default function AppFooter() {
 
   return (
     <footer className="app-site-footer">
-      <p className="app-site-footer-text">
-        <Trans
-          i18nKey="footer.text"
-          components={{
-            heart: <span aria-hidden>⚡</span>,
-            channel: <span className="text-ink font-medium" />,
-          }}
-        />
-      </p>
+      <div className="flex flex-col leading-none">
+        <p className="app-site-footer-text">
+          <Trans
+            i18nKey="footer.text"
+            components={{
+              heart: <span aria-hidden>⚡</span>,
+              channel: <span className="text-ink font-medium" />,
+            }}
+          />
+        </p>
+        <p className="mt-1 text-[11px] text-muted/70 tracking-wide">Ali Ünal</p>
+      </div>
       <div className="flex items-center gap-2 shrink-0">
         <button
           type="button"
