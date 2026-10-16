@@ -81,7 +81,7 @@ const TOTAL_W = WORD.length * (LETTER_W + GAP) + (LETTER_W + GAP); // +bolt
 const TOTAL_H = LETTER_H;
 
 // accent blue — matches --color-accent CSS var
-const ACCENT = 'var(--color-accent, #0e71fb)';
+const ACCENT = '#f59e0b';
 const INK = 'currentColor';
 
 interface SquikLogoProps {
