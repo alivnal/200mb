@@ -11,8 +11,8 @@ import PanelMascot from './PanelMascot';
 
 export default function LandingMascotHero() {
   return (
-    <div className="flex flex-col items-center gap-3">
-      <SquikLogo size={44} className="text-ink" />
+    <div className="flex flex-col items-center gap-4">
+      <SquikLogo scale={1} className="text-ink" />
       <PanelMascot variant="walky" size="hero" />
     </div>
   );

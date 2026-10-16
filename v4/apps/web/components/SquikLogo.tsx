@@ -3,72 +3,190 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+'use client';
+
+import React, { useRef } from 'react';
+import { gsap, useGSAP } from '@/lib/gsapSetup';
+
+// ─── 5×7 pixel font bitmaps ───────────────────────────────────────────────
+// 1 = filled pixel, 0 = empty.  Row 0 = top.
+const GLYPHS: Record<string, number[][]> = {
+  S: [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0],
+    [0, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  Q: [
+    [0, 1, 1, 1, 0],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 1, 0, 1],
+    [1, 0, 0, 1, 0],
+    [0, 1, 1, 0, 1],
+  ],
+  U: [
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 0, 1],
+    [0, 1, 1, 1, 0],
+  ],
+  I: [
+    [0, 1, 1, 1, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 0, 1, 0, 0],
+    [0, 1, 1, 1, 0],
+  ],
+  K: [
+    [1, 0, 0, 0, 1],
+    [1, 0, 0, 1, 0],
+    [1, 0, 1, 0, 0],
+    [1, 1, 0, 0, 0],
+    [1, 0, 1, 0, 0],
+    [1, 0, 0, 1, 0],
+    [1, 0, 0, 0, 1],
+  ],
+};
+
+const BOLT: number[][] = [
+  [0, 0, 1, 1, 0],
+  [0, 1, 1, 0, 0],
+  [1, 1, 1, 1, 0],
+  [0, 0, 1, 0, 0],
+  [0, 1, 1, 1, 1],
+  [0, 1, 1, 0, 0],
+  [0, 1, 0, 0, 0],
+];
+
+const WORD = ['S', 'Q', 'U', 'I', 'K'];
+const PIXEL = 8;   // px per grid cell
+const GAP = 3;     // px between letters
+const ROWS = 7;
+const COLS = 5;
+
+const LETTER_W = COLS * PIXEL;
+const LETTER_H = ROWS * PIXEL;
+const TOTAL_W = WORD.length * (LETTER_W + GAP) + (LETTER_W + GAP); // +bolt
+const TOTAL_H = LETTER_H;
+
+// accent blue — matches --color-accent CSS var
+const ACCENT = 'var(--color-accent, #0e71fb)';
+const INK = 'currentColor';
 
 interface SquikLogoProps {
   className?: string;
-  size?: number;
+  /** Scale multiplier (1 = default 56 px tall) */
+  scale?: number;
+  /** Play the entrance animation */
+  animate?: boolean;
 }
 
-/**
- * SQUIK wordmark — geometric stroke letters + lightning bolt accent.
- * Uses currentColor for the letterforms so it adapts to light/dark mode.
- * The bolt is always accent-blue (#0e71fb / #5ba3ff in dark).
- */
-export default function SquikLogo({ className = '', size = 48 }: SquikLogoProps) {
-  const w = Math.round(size * (280 / 64));
+export default function SquikLogo({ className = '', scale = 1, animate = true }: SquikLogoProps) {
+  const scopeRef = useRef<SVGSVGElement>(null);
+
+  const W = Math.round(TOTAL_W * scale);
+  const H = Math.round(TOTAL_H * scale);
+
+  useGSAP(
+    () => {
+      if (!animate) return;
+
+      // Each letter's pixel group fades + drops in with stagger
+      const letterGroups = scopeRef.current?.querySelectorAll('.sq-letter');
+      const boltGroup = scopeRef.current?.querySelector('.sq-bolt');
+
+      if (!letterGroups?.length || !boltGroup) return;
+
+      gsap.set(letterGroups, { opacity: 0, y: -6 });
+      gsap.set(boltGroup, { opacity: 0, scale: 0.5, transformOrigin: '50% 50%' });
+
+      gsap.to(letterGroups, {
+        opacity: 1,
+        y: 0,
+        duration: 0.35,
+        stagger: 0.07,
+        ease: 'back.out(1.4)',
+      });
+
+      gsap.to(boltGroup, {
+        opacity: 1,
+        scale: 1,
+        duration: 0.4,
+        delay: WORD.length * 0.07 + 0.15,
+        ease: 'back.out(2)',
+      });
+    },
+    { scope: scopeRef, dependencies: [animate] },
+  );
+
   return (
     <svg
+      ref={scopeRef}
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 280 64"
-      width={w}
-      height={size}
+      viewBox={`0 0 ${TOTAL_W} ${TOTAL_H}`}
+      width={W}
+      height={H}
       fill="none"
       aria-label="Squik"
       role="img"
       className={className}
+      style={{ imageRendering: 'pixelated' }}
     >
-      {/* S */}
-      <path
-        d="M8 14h24a6 6 0 0 1 6 6v8a6 6 0 0 1-6 6H14a4 4 0 0 0-4 4v8a4 4 0 0 0 4 4h24"
-        stroke="currentColor"
-        strokeWidth="7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Q */}
-      <circle cx="68" cy="32" r="18" stroke="currentColor" strokeWidth="7" />
-      <line x1="80" y1="44" x2="90" y2="54" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
-      {/* U */}
-      <path
-        d="M106 14v28a10 10 0 0 0 20 0V14"
-        stroke="currentColor"
-        strokeWidth="7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* I */}
-      <line x1="148" y1="14" x2="148" y2="50" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
-      <line x1="140" y1="14" x2="156" y2="14" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
-      <line x1="140" y1="50" x2="156" y2="50" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
-      {/* K */}
-      <line x1="170" y1="14" x2="170" y2="50" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
-      <path
-        d="M170 32 L192 14"
-        stroke="currentColor"
-        strokeWidth="7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M170 32 L192 50"
-        stroke="currentColor"
-        strokeWidth="7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* ⚡ Lightning bolt accent */}
-      <path d="M210 10 L202 32 L208 32 L200 54 L214 28 L208 28 Z" fill="var(--color-accent, #0e71fb)" />
+      {WORD.map((letter, li) => {
+        const glyph = GLYPHS[letter];
+        const offsetX = li * (LETTER_W + GAP);
+        return (
+          <g key={letter + li} className="sq-letter">
+            {glyph.map((row, ri) =>
+              row.map((on, ci) =>
+                on ? (
+                  <rect
+                    key={`${ri}-${ci}`}
+                    x={offsetX + ci * PIXEL}
+                    y={ri * PIXEL}
+                    width={PIXEL}
+                    height={PIXEL}
+                    fill={INK}
+                    shapeRendering="crispEdges"
+                  />
+                ) : null,
+              ),
+            )}
+          </g>
+        );
+      })}
+
+      {/* ⚡ Lightning bolt — accent colour */}
+      <g
+        className="sq-bolt"
+        transform={`translate(${WORD.length * (LETTER_W + GAP)}, 0)`}
+      >
+        {BOLT.map((row, ri) =>
+          row.map((on, ci) =>
+            on ? (
+              <rect
+                key={`b-${ri}-${ci}`}
+                x={ci * PIXEL}
+                y={ri * PIXEL}
+                width={PIXEL}
+                height={PIXEL}
+                fill={ACCENT}
+                shapeRendering="crispEdges"
+              />
+            ) : null,
+          ),
+        )}
+      </g>
     </svg>
   );
 }
