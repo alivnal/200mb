@@ -19,7 +19,7 @@ import { useFlipList } from '@/hooks/useFlipList';
 import CompressOIcon from './CompressOIcon';
 import MaterialIcon from './MaterialIcon';
 import PanelMascot from './mascot/PanelMascot';
-import DamEnvironment from './DamEnvironment';
+import SquikHero from './SquikHero';
 
 const VIDEO_ACCEPT = 'video/mp4,video/quicktime,video/webm,video/x-matroska,.mp4,.mov,.webm,.mkv';
 const VIDEO_EXT = /\.(mp4|mov|mkv|webm|avi|m4v)$/i;
@@ -303,7 +303,7 @@ export default function VideoSelector({
         </div>
       )}
 
-      <DamEnvironment />
+      <SquikHero />
 
       <div className="tool-ui" data-ui="video-compressor">
         <div className="tool-ui-body">

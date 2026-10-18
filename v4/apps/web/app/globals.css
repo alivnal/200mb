@@ -452,10 +452,12 @@ body {
   isolation: isolate;
   display: grid;
   grid-template-columns: minmax(17rem, 0.86fr) minmax(30rem, 1.14fr);
-  align-items: center;
+  /* The card rests at the bottom so the diorama above it stays in view. */
+  align-items: end;
   gap: clamp(2rem, 6vw, 6rem);
   width: min(100%, 76rem);
-  min-height: clamp(38rem, 72vh, 48rem);
+  min-height: clamp(38rem, calc(100svh - 17rem), 56rem);
+  padding-bottom: 1.5rem;
   margin: auto;
 }
 
@@ -463,6 +465,7 @@ body {
   max-width: 34rem;
 }
 
+/* First pixel dam design (DamEnvironment), kept unused for reference. */
 .dam-environment {
   position: absolute;
   z-index: 0;
@@ -473,6 +476,43 @@ body {
   pointer-events: none;
   opacity: 0.92;
   transform: translateX(-10%);
+}
+
+/* Squik hero shares the tool card's grid cell as a zero-size anchor at the
+   card's left edge and vertical centre. Offsets are whole multiples of the
+   art scale, placing the card on the diorama's empty front meadow. */
+.squik-stage {
+  position: relative;
+  z-index: 0;
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: start;
+  align-self: end;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.squik-hero {
+  position: absolute;
+  left: -600px;
+  top: -840px;
+  display: block;
+  width: 1280px;
+  max-width: none;
+  height: auto;
+  image-rendering: pixelated;
+  user-select: none;
+}
+
+/* 4x needs a tall window; otherwise 3x, with the card set a little lower on
+   the meadow so it covers less of the scene. */
+@media (max-width: 1180px), (max-height: 999px) {
+  .squik-hero {
+    left: -450px;
+    top: -705px;
+    width: 960px;
+  }
 }
 
 .dam-pixel-svg {
@@ -507,6 +547,7 @@ body {
 
 .tool-ui {
   grid-column: 2;
+  grid-row: 1;
   position: relative;
   z-index: 1;
 }
@@ -519,6 +560,10 @@ body {
   animation: pixel-waterfall-fall 520ms steps(4, end) infinite;
 }
 
+.pixel-star {
+  animation: pixel-star-twinkle 1.4s steps(2, end) infinite alternate;
+}
+
 .pixel-waterfall-splash {
   animation: pixel-waterfall-splash 680ms steps(3, end) infinite alternate;
 }
@@ -528,7 +573,11 @@ body {
 }
 
 @keyframes pixel-waterfall-fall {
-  to { transform: translateY(8px); }
+  to { transform: translateY(24px); }
+}
+
+@keyframes pixel-star-twinkle {
+  to { opacity: 0.4; }
 }
 
 @keyframes pixel-waterfall-splash {
@@ -538,6 +587,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .pixel-water-glint,
   .pixel-waterfall-flow,
+  .pixel-star,
   .pixel-waterfall-splash {
     animation: none;
   }
@@ -1123,6 +1173,10 @@ body {
 @media (max-width: 900px) {
   .tool-layout {
     grid-template-columns: minmax(0, 1fr);
+    /* Room above the card for the diorama; the card sits on its front edge. */
+    align-items: start;
+    padding-top: 24rem;
+    padding-bottom: 0;
     gap: 2rem;
     max-width: 44rem;
     min-height: clamp(36rem, 68vh, 46rem);
@@ -1131,6 +1185,19 @@ body {
   .dam-environment {
     inset: -3rem -2rem;
     opacity: 0.62;
+  }
+
+  .squik-stage {
+    grid-column: 1;
+    justify-self: center;
+    align-self: start;
+  }
+
+  .squik-hero {
+    left: -320px;
+    /* Front edge of the diorama (art row 190) meets the top of the card. */
+    top: -380px;
+    width: 640px;
   }
 
   .tool-ui {
@@ -1156,7 +1223,7 @@ body {
   .tool-layout {
     gap: 1.75rem;
     margin: 0 auto;
-    padding-top: 10rem;
+    padding-top: 24rem;
   }
 
   .dam-environment {
@@ -1251,5 +1318,19 @@ body {
   .drop-zone,
   .drop-zone > * {
     animation: none;
+  }
+}
+
+/* Phones: 2x no longer fits, so the diorama spans the viewport width. The
+   scale is fractional, which high-density screens render evenly enough. */
+@media (max-width: 640px) {
+  .tool-layout {
+    padding-top: calc(59vw - 2.25rem);
+  }
+
+  .squik-hero {
+    left: -50vw;
+    top: -59vw;
+    width: 100vw;
   }
 }

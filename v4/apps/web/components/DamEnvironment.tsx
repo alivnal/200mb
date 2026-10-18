@@ -1,6 +1,10 @@
 'use client';
 
+// First pixel dam hero design. Kept for reference only: the page now renders
+// SquikHero. To bring it back, render <DamEnvironment /> in VideoSelector.
+
 import * as React from 'react';
+import { useTheme } from '@/app/providers';
 import { useInView, useStillness } from './iso/react/live';
 
 type DamStage = 0 | 1 | 2 | 3;
@@ -10,6 +14,21 @@ type Palette = { top: string; x: string; y: string };
 const STAGES = [0, 1, 2, 3] as const;
 const WIDTH = 640;
 const HEIGHT = 320;
+const TREES = [
+  { x: -3.45, y: -4.2, id: 'willow-back' },
+  { x: 3.1, y: -3.8, id: 'willow-front' },
+  { x: -8.3, y: 1.8, id: 'left-bank' },
+  { x: 7.2, y: -1.8, id: 'right-bank' },
+  { x: -7.4, y: -3.3, id: 'far-bank' },
+  { x: 7.3, y: 3.2, id: 'near-bank' },
+  { x: -5.8, y: -5, id: 'northwest-bank' },
+  { x: 5.8, y: -5, id: 'northeast-bank' },
+  { x: -8.2, y: -1.2, id: 'west-bank' },
+  { x: 8, y: 0.6, id: 'east-bank' },
+  { x: -7.8, y: 4.4, id: 'southwest-bank' },
+  { x: -5.4, y: 5, id: 'south-bank' },
+  { x: 5.8, y: 5, id: 'southeast-bank' },
+] as const;
 
 const SOIL: Palette = { top: '#78934a', x: '#456b42', y: '#547b43' };
 const EDGE_SOIL: Palette = { top: '#668345', x: '#3e6340', y: '#4b7041' };
@@ -93,13 +112,15 @@ function Waterfall() {
   const bottom = -25;
   const left = -4;
   const width = 8;
-  const streaks = Array.from({ length: 17 }, (_, index) => ({
-    x: left + 0.08 + index * 0.46,
-    z: top - (index % 3) * 0.2,
+  const streaks = Array.from({ length: 17 * 5 }, (_, index) => ({
+    lane: index % 17,
+    row: Math.floor(index / 17),
+    x: left + 0.08 + (index % 17) * 0.46,
+    z: top - 0.5 - Math.floor(index / 17) * 5.1,
   }));
 
   return (
-    <g className="pixel-waterfall" data-step="1" aria-hidden="true">
+    <g className="pixel-waterfall" aria-hidden="true">
       <polygon
         points={pointString([
           [left, y, top],
@@ -110,32 +131,35 @@ function Waterfall() {
         fill="#258fa8"
         opacity="0.9"
       />
-      {streaks.map(({ x }, index) => (
-        <polygon
-          key={`waterfall-column-${index}`}
-          points={pointString([
-            [x, y + 0.015, top],
-            [x + 0.2, y + 0.015, top],
-            [x + 0.2, y + 0.015, bottom],
-            [x, y + 0.015, bottom],
-          ])}
-          fill={index % 2 ? '#38a8b8' : '#4bb6c1'}
-        />
-      ))}
-      {streaks.map(({ x, z }, index) => {
+      {Array.from({ length: 17 }, (_, index) => {
+        const x = left + 0.08 + index * 0.46;
+        return (
+          <polygon
+            key={`waterfall-column-${index}`}
+            points={pointString([
+              [x, y + 0.015, top],
+              [x + 0.2, y + 0.015, top],
+              [x + 0.2, y + 0.015, bottom],
+              [x, y + 0.015, bottom],
+            ])}
+            fill={index % 2 ? '#38a8b8' : '#4bb6c1'}
+          />
+        );
+      })}
+      {streaks.map(({ lane, row, x, z }, index) => {
         const [px, py] = project([x, y + 0.015, z]);
         return (
           <g
             key={`waterfall-flow-${index}`}
             className="pixel-waterfall-flow"
-            style={{ animationDelay: `${index * 130}ms` }}
+            style={{ animationDelay: `${(lane * 67 + row * 210) % 980}ms` }}
           >
-            <rect x={px} y={py} width={index % 2 ? 4 : 5} height="12" fill="#57c0c9" />
+            <rect x={px} y={py} width={lane % 2 ? 4 : 5} height="12" fill="#57c0c9" />
             <rect x={px + 5} y={py + 4} width="3" height="8" fill="#b4e4d8" />
           </g>
         );
       })}
-      {streaks.map(({ x }, index) => {
+      {streaks.slice(-17).map(({ x }, index) => {
         const [px, py] = project([x + 0.12, y + 0.02, bottom]);
         return <rect key={`waterfall-splash-${index}`} x={px} y={py} width="5" height="3" fill="#b4e4d8" />;
       })}
@@ -160,7 +184,7 @@ function BankTree({ x, y, z, id }: { x: number; y: number; z: number; id: string
   );
 }
 
-function StreamScene({ stage }: { stage: DamStage }) {
+function StreamScene({ stage, theme }: { stage: DamStage; theme: 'light' | 'dark' }) {
   const channelBounds = (y: number) => (y >= 3 ? [-4, 4] : y >= 1 ? [-3, 3] : [-2, 2]);
   const bankTiles = Array.from({ length: 20 * 12 }, (_, index) => {
     const x = -10 + (index % 20);
@@ -183,6 +207,40 @@ function StreamScene({ stage }: { stage: DamStage }) {
 
   return (
     <>
+      <g className={`pixel-sky pixel-sky-${theme}`} aria-hidden="true">
+        {theme === 'light' ? (
+          <g className="pixel-sun">
+            <rect x="309" y="8" width="16" height="16" fill="#f4c84a" />
+            <rect x="313" y="4" width="8" height="4" fill="#f4c84a" />
+            <rect x="313" y="24" width="8" height="4" fill="#f4c84a" />
+            <rect x="301" y="12" width="8" height="8" fill="#f4c84a" />
+            <rect x="325" y="12" width="8" height="8" fill="#f4c84a" />
+            <rect x="313" y="12" width="8" height="8" fill="#ffe58a" />
+          </g>
+        ) : (
+          <g className="pixel-night-sky">
+            <g className="pixel-moon">
+              <rect x="309" y="7" width="4" height="4" fill="#eee2b6" />
+              <rect x="305" y="11" width="12" height="4" fill="#eee2b6" />
+              <rect x="305" y="15" width="16" height="4" fill="#eee2b6" />
+              <rect x="309" y="19" width="12" height="4" fill="#eee2b6" />
+              <rect x="313" y="23" width="8" height="4" fill="#eee2b6" />
+              <rect x="313" y="7" width="12" height="4" fill="#0f0f11" />
+              <rect x="317" y="11" width="12" height="4" fill="#0f0f11" />
+              <rect x="321" y="15" width="8" height="4" fill="#0f0f11" />
+              <rect x="321" y="19" width="8" height="4" fill="#0f0f11" />
+            </g>
+            {[
+              [286, 9], [345, 11], [369, 27], [275, 34], [338, 39], [396, 14],
+            ].map(([x, y], index) => (
+              <g key={`night-star-${index}`} className="pixel-star" style={{ animationDelay: `${index * 170}ms` }}>
+                <rect x={x} y={y} width={index % 2 ? 3 : 4} height={index % 2 ? 3 : 4} fill="#e5dfc4" />
+                {index % 2 === 0 && <rect x={x + 1} y={y - 2} width="2" height="8" fill="#e5dfc4" />}
+              </g>
+            ))}
+          </g>
+        )}
+      </g>
       <PixelBox x={-10} y={-6} z={-1} w={20} d={12} h={1} palette={BASE} />
       <g className="pixel-land">
         {bankTiles.map(({ x, y }) => (
@@ -241,12 +299,9 @@ function StreamScene({ stage }: { stage: DamStage }) {
         ))}
       </g>
       <g className="pixel-bank-plants">
-        <BankTree x={-3.45} y={-4.2} z={0.85} id="willow-back" />
-        <BankTree x={3.1} y={-3.8} z={0.85} id="willow-front" />
-        <BankTree x={-8.3} y={1.8} z={0.85} id="left-bank" />
-        <BankTree x={7.2} y={-1.8} z={0.85} id="right-bank" />
-        <BankTree x={-7.4} y={-3.3} z={0.85} id="far-bank" />
-        <BankTree x={7.3} y={3.2} z={0.85} id="near-bank" />
+        {TREES.map(({ x, y, id }) => (
+          <BankTree key={id} x={x} y={y} z={0.85} id={id} />
+        ))}
         {[
           [-8.6, 0.1], [-7.2, 2.7], [-5.1, -4.6], [-3.55, -3.2],
           [2.15, -4.5], [4.2, -2.8], [7.1, -0.2], [7.7, 2.6],
@@ -351,6 +406,7 @@ function StreamScene({ stage }: { stage: DamStage }) {
 }
 
 export default function DamEnvironment() {
+  const { resolvedTheme } = useTheme();
   const still = useStillness();
   const [stage, setStage] = React.useState<DamStage>(0);
   const root = React.useRef<HTMLDivElement | null>(null);
@@ -373,7 +429,7 @@ export default function DamEnvironment() {
         shapeRendering="crispEdges"
         focusable="false"
       >
-        <StreamScene stage={stage} />
+        <StreamScene stage={stage} theme={resolvedTheme} />
       </svg>
     </div>
   );
