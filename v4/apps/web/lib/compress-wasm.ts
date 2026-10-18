@@ -479,9 +479,11 @@ async function compressFileWithFfmpeg(
   jobProgress.enterPhase('loading', 1);
 
   const inputName = file.name;
+  const fallbackInputName = `fallback${extFromName(file.name)}`;
   const inputDirectory = '/input';
   let inputDirectoryCreated = false;
   let inputMounted = false;
+  let inputWrittenToMemory = false;
 
   try {
     jobProgress.enterPhase('uploading', 0);
@@ -499,11 +501,31 @@ async function compressFileWithFfmpeg(
     if (!mountedFiles.some((entry) => entry.name === inputName && !entry.isDir)) {
       throw new Error(t('errors.largeFileInputUnsupported'));
     }
-    jobProgress.enterPhase('uploading', 1);
-
-    const mountedInputName = `${inputDirectory}/${inputName}`;
-    const hasAudio = await probeHasAudio(ffmpeg, mountedInputName);
+    let mountedInputName = `${inputDirectory}/${inputName}`;
+    let hasAudio: boolean;
+    try {
+      hasAudio = await probeHasAudio(ffmpeg, mountedInputName);
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !/No such file or directory|does not exist/i.test(error.message)
+      ) {
+        throw error;
+      }
+      console.warn(
+        '[Squish] WORKERFS input is not readable; falling back to memory-backed input.',
+      );
+      await ffmpeg.unmount(inputDirectory);
+      inputMounted = false;
+      await ffmpeg.deleteDir(inputDirectory);
+      inputDirectoryCreated = false;
+      await ffmpeg.writeFile(fallbackInputName, await fetchFile(file));
+      inputWrittenToMemory = true;
+      mountedInputName = fallbackInputName;
+      hasAudio = await probeHasAudio(ffmpeg, mountedInputName);
+    }
     if (isCancelled(session)) throw new CompressionCancelledError();
+    jobProgress.enterPhase('uploading', 1);
 
     return compressFromWasmFs(
       ffmpeg,
@@ -523,6 +545,7 @@ async function compressFileWithFfmpeg(
   } finally {
     if (inputMounted) await ffmpeg.unmount(inputDirectory).catch(() => {});
     if (inputDirectoryCreated) await ffmpeg.deleteDir(inputDirectory).catch(() => {});
+    if (inputWrittenToMemory) await ffmpeg.deleteFile(fallbackInputName).catch(() => {});
     await ffmpeg.deleteFile(WASM_OUTPUT_NAME).catch(() => {});
   }
 }

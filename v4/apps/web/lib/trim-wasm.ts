@@ -253,5 +253,8 @@ export async function probeHasAudioInFfmpeg(
   } finally {
     ffmpeg.off('log', handler);
   }
+  if (/No such file or directory|does not exist/i.test(log)) {
+    throw new Error(`FFmpeg could not open input "${inputName}": ${log.trim()}`);
+  }
   return /Audio:/i.test(log);
 }
