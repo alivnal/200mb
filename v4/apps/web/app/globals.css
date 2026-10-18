@@ -503,8 +503,11 @@ body {
   user-select: none;
 }
 
-.squik-hero:not([data-ready]) {
-  visibility: hidden;
+/* Only side by side is the image placed by script; stacked it is in flow. */
+@media (min-width: 901px) {
+  .squik-hero:not([data-ready]) {
+    visibility: hidden;
+  }
 }
 
 .dam-pixel-svg {
@@ -1195,7 +1198,6 @@ body {
     position: static;
     width: min(100%, 640px);
     margin: 0 auto;
-    visibility: visible;
   }
 
   .tool-ui {
