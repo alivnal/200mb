@@ -3,10 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import { I18nextProvider, useTranslation } from 'react-i18next';
 import { SUPPORTED_LOCALES, type AppLocale } from './config';
-import { getI18nInstance } from './i18n';
+import { applySavedLocale, getI18nInstance } from './i18n';
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [i18n] = useState(() => getI18nInstance());
+
+  useEffect(() => {
+    void applySavedLocale();
+  }, []);
 
   useEffect(() => {
     const syncLang = () => {
