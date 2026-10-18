@@ -44,6 +44,20 @@ let ffmpegInstance: FFmpeg | null = null;
 let loadPromise: Promise<FFmpeg> | null = null;
 let activeSession = 0;
 
+class FfmpegEncodeError extends Error {
+  constructor(
+    readonly diagnostics: string[],
+    readonly cause?: unknown,
+  ) {
+    super(
+      cause instanceof Error
+        ? cause.message
+        : diagnostics.at(-1) ?? 'FFmpeg exited with a non-zero status',
+    );
+    this.name = 'FfmpegEncodeError';
+  }
+}
+
 export type { CompressionProgressSnapshot };
 
 export function extFromName(name: string): string {
@@ -241,17 +255,42 @@ async function compressFromWasmFs(
       // output may not exist yet
     }
 
-    const encodeMs = await runWasmEncode(
-      ffmpeg,
-      inputName,
-      WASM_OUTPUT_NAME,
-      blueprint,
-      hasAudio,
-      metadata.duration,
-      session,
-      attemptIndex,
-      jobProgress,
-    );
+    let encodeMs: number;
+    try {
+      encodeMs = await runWasmEncode(
+        ffmpeg,
+        inputName,
+        WASM_OUTPUT_NAME,
+        blueprint,
+        hasAudio,
+        metadata.duration,
+        session,
+        attemptIndex,
+        jobProgress,
+      );
+    } catch (error) {
+      if (!(error instanceof FfmpegEncodeError)) {
+        throw error;
+      }
+      if (!isMemoryPressure(error)) {
+        throw new Error(formatFfmpegFailure(t('errors.encodingFailed'), error.diagnostics));
+      }
+
+      attemptIndex++;
+      tierIndex++;
+      if (tierIndex >= WEB_DEGRADATION_PASSES.length) {
+        throw new Error(
+          formatFfmpegFailure(t('errors.encodingMemoryFailed'), error.diagnostics),
+        );
+      }
+
+      console.warn(
+        `[Squish] FFmpeg ran out of memory; retrying with compression tier ${tierIndex + 1}.`,
+      );
+      blueprint = blueprintForWebPass(tierIndex, metadata.duration);
+      bitrateRetriesLeft = WEB_MAX_BITRATE_RETRIES;
+      continue;
+    }
     totalEncodeMs += encodeMs;
     attemptIndex++;
 
@@ -299,6 +338,19 @@ async function compressFromWasmFs(
   );
 }
 
+function isMemoryPressure(error: FfmpegEncodeError): boolean {
+  const message = [error.message, ...error.diagnostics].join('\n').toLowerCase();
+  return /out of memory|cannot allocate memory|failed to allocate|memory access out of bounds|cannot enlarge memory|oom/.test(
+    message,
+  );
+}
+
+function formatFfmpegFailure(message: string, diagnostics: string[]): string {
+  const detail = diagnostics.slice(-4).join(' | ');
+  const detailMessage = t('errors.encodingFailedDetails').replace('{{details}}', detail);
+  return detail ? `${message} ${detailMessage}` : message;
+}
+
 async function probeHasAudio(ffmpeg: FFmpeg, inputName: string): Promise<boolean> {
   const { probeHasAudioInFfmpeg } = await import('./trim-wasm');
   return probeHasAudioInFfmpeg(ffmpeg, inputName);
@@ -320,6 +372,7 @@ async function runWasmEncode(
   const args = buildWasmLibx264FfmpegArgs(inputName, outputName, blueprint, hasAudio);
   const encodeStarted = Date.now();
   let bestRatio = 0;
+  const diagnostics: string[] = [];
 
   const reportEncode = (ratio: number) => {
     bestRatio = Math.max(bestRatio, Math.min(0.995, ratio));
@@ -334,6 +387,10 @@ async function runWasmEncode(
   };
 
   const logHandler = ({ message }: { message: string }) => {
+    if (message.trim()) {
+      diagnostics.push(message.trim());
+      if (diagnostics.length > 20) diagnostics.shift();
+    }
     if (isCancelled(session) || durationSeconds <= 0) return;
     const seconds = parseFfmpegLogTime(message);
     if (seconds !== null) {
@@ -349,10 +406,15 @@ async function runWasmEncode(
     const code = await ffmpeg.exec(args);
     if (isCancelled(session)) throw new CompressionCancelledError();
     if (code !== 0) {
-      throw new Error(t('errors.encodingFailed'));
+      throw new FfmpegEncodeError(diagnostics);
     }
     reportEncode(1);
     return Date.now() - encodeStarted;
+  } catch (error) {
+    if (error instanceof CompressionCancelledError || error instanceof FfmpegEncodeError) {
+      throw error;
+    }
+    throw new FfmpegEncodeError(diagnostics, error);
   } finally {
     ffmpeg.off('progress', progressHandler);
     ffmpeg.off('log', logHandler);

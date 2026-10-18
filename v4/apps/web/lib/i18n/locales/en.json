@@ -56,6 +56,8 @@
     "mergeMinTwo": "Select at least two videos to merge.",
     "metadataReadFailed": "Could not read video metadata. The file may be corrupt or unsupported.",
     "encodingFailed": "FFmpeg encoding failed. The file may be too large for your browser.",
+    "encodingMemoryFailed": "Your browser ran out of memory while encoding this video. Try a shorter or lower-resolution video, or use the desktop app.",
+    "encodingFailedDetails": "FFmpeg details: {{details}}",
     "largeFileInputUnsupported": "Your browser cannot stream this video into the encoder. Try a different browser or a smaller file.",
     "mergeFailed": "FFmpeg merge failed. Clips may be too large for your browser.",
     "trimProbeFailed": "Could not read video duration. Please try a different file.",
