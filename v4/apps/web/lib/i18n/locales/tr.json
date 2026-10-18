@@ -54,6 +54,7 @@
     "mergeMinTwo": "Birleştirmek için en az iki video seçin.",
     "metadataReadFailed": "Video meta verileri okunamadı. Dosya bozuk veya desteklenmiyor olabilir.",
     "encodingFailed": "FFmpeg kodlaması başarısız oldu. Dosya tarayıcınız için çok büyük olabilir.",
+    "largeFileInputUnsupported": "Tarayıcınız bu videoyu kodlayıcıya doğrudan aktaramıyor. Farklı bir tarayıcı veya daha küçük bir dosya deneyin.",
     "mergeFailed": "FFmpeg birleştirmesi başarısız oldu. Klipler tarayıcınız için çok büyük olabilir.",
     "trimProbeFailed": "Video süresi okunamadı. Lütfen farklı bir dosya deneyin.",
     "trimRangeEmpty": "Silinecek en az bir zaman aralığı girin.",

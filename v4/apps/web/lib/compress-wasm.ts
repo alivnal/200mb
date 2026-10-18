@@ -417,34 +417,46 @@ async function compressFileWithFfmpeg(
   jobProgress.enterPhase('loading', 1);
 
   const inputName = `input${extFromName(file.name)}`;
+  const inputDirectory = '/input';
+  let inputDirectoryCreated = false;
+  let inputMounted = false;
 
   try {
     jobProgress.enterPhase('uploading', 0);
-    const uploadStarted = Date.now();
-    const uploadBudget = estimateUploadMs(file.size);
-    const uploadTimer = window.setInterval(() => {
-      if (isCancelled(session)) return;
-      const ratio = Math.min(0.92, (Date.now() - uploadStarted) / uploadBudget);
-      jobProgress.update(ratio);
-    }, 250);
-
-    await ffmpeg.writeFile(inputName, await fetchFile(file));
-    window.clearInterval(uploadTimer);
+    await ffmpeg.createDir(inputDirectory);
+    inputDirectoryCreated = true;
+    const mounted = await ffmpeg.mount(
+      'WORKERFS' as Parameters<typeof ffmpeg.mount>[0],
+      { blobs: [{ name: inputName, data: file }] },
+      inputDirectory,
+    );
+    if (!mounted) throw new Error(t('errors.largeFileInputUnsupported'));
+    inputMounted = true;
     if (isCancelled(session)) throw new CompressionCancelledError();
     jobProgress.enterPhase('uploading', 1);
 
-    const hasAudio = await probeHasAudio(ffmpeg, inputName);
+    const mountedInputName = `${inputDirectory}/${inputName}`;
+    const hasAudio = await probeHasAudio(ffmpeg, mountedInputName);
     if (isCancelled(session)) throw new CompressionCancelledError();
 
-    return compressFromWasmFs(ffmpeg, inputName, metadata, hasAudio, session, jobProgress, {
-      originalSize,
-      outputFilename,
-      clipCount,
-      trimSegmentCount,
-      skipEncodeMaxBytes,
-    });
+    return compressFromWasmFs(
+      ffmpeg,
+      mountedInputName,
+      metadata,
+      hasAudio,
+      session,
+      jobProgress,
+      {
+        originalSize,
+        outputFilename,
+        clipCount,
+        trimSegmentCount,
+        skipEncodeMaxBytes,
+      },
+    );
   } finally {
-    await ffmpeg.deleteFile(inputName).catch(() => {});
+    if (inputMounted) await ffmpeg.unmount(inputDirectory).catch(() => {});
+    if (inputDirectoryCreated) await ffmpeg.deleteDir(inputDirectory).catch(() => {});
     await ffmpeg.deleteFile(WASM_OUTPUT_NAME).catch(() => {});
   }
 }
