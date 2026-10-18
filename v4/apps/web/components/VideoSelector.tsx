@@ -15,19 +15,10 @@ import {
 } from '@/lib/squish-core';
 import { probeVideoFile } from '@/lib/compress-wasm';
 import AnimatedSection from './AnimatedSection';
-import AnimatedText from './AnimatedText';
 import { useFlipList } from '@/hooks/useFlipList';
 import CompressOIcon from './CompressOIcon';
 import MaterialIcon from './MaterialIcon';
-import LandingMascotHero from './mascot/LandingMascotHero';
 import PanelMascot from './mascot/PanelMascot';
-import {
-  PanelBody,
-  PanelDivider,
-  PanelHeader,
-  PanelInset,
-  ScreenPanel,
-} from './ScreenPanel';
 
 const VIDEO_ACCEPT = 'video/mp4,video/quicktime,video/webm,video/x-matroska,.mp4,.mov,.webm,.mkv';
 const VIDEO_EXT = /\.(mp4|mov|mkv|webm|avi|m4v)$/i;
@@ -60,7 +51,7 @@ export default function VideoSelector({
   onTrimAndCompress,
   disabled = false,
 }: VideoSelectorProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [mode, setMode] = useState<SelectorMode>('compress');
   const [isDragActive, setIsDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -292,7 +283,7 @@ export default function VideoSelector({
   }
 
   return (
-    <div className="relative">
+    <section className="tool-layout">
       <input
         ref={fileInputRef}
         type="file"
@@ -304,69 +295,39 @@ export default function VideoSelector({
 
       {isDragActive && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/90 pointer-events-none">
-          <div className="flex flex-col items-center gap-3 text-accent">
+          <div className="drop-overlay">
             <CompressOIcon name="addMedia" size={52} />
-            <p className="text-lg">{t('landing.dropAnywhere')}</p>
+            <p>{t('landing.dropAnywhere')}</p>
           </div>
         </div>
       )}
 
-      <ScreenPanel size="xl" className="z-10">
-        <PanelHeader>
-          <LandingMascotHero />
-          <AnimatedText
-            key={`headline-${i18n.language}`}
-            as="h1"
-            split="words"
-            className="mt-space-4 text-[clamp(1.25rem,3.5vw,1.5rem)] text-ink tracking-wide"
-            animateDots={false}
-          >
-            {t('landing.headlineBefore') && <>{t('landing.headlineBefore')} </>}
-            <span className="text-accent">{t('landing.headlineAccent')}</span>
-            {t('landing.headlineAfter') && <> {t('landing.headlineAfter')}</>}
-          </AnimatedText>
-          <AnimatedText
-            key={`${mode}-${i18n.language}`}
-            as="p"
-            split="words"
-            className="mt-space-2 text-body-sm leading-5 text-muted max-w-md mx-auto"
-            animateDots={false}
-          >
-            {mode === 'compress' ? (
-              <>
-                {t('landing.compressSubtitleBefore')}{' '}
-                <span className="text-ink font-medium">{t('common.mbLimit')}</span>{' '}
-                {t('landing.compressSubtitleAfter')}
-              </>
-            ) : mode === 'merge' ? (
-              <>
-                {t('landing.mergeSubtitleBefore')}{' '}
-                <span className="text-ink font-medium">{t('common.mbLimit')}</span>{' '}
-                {t('landing.mergeSubtitleAfter')}
-              </>
-            ) : (
-              <>
-                {t('landing.trimSubtitleBefore')}{' '}
-                <span className="text-ink font-medium">{t('common.mbLimit')}</span>{' '}
-                {t('landing.trimSubtitleAfter')}
-              </>
-            )}
-          </AnimatedText>
-        </PanelHeader>
+      <div className="tool-intro">
+        <h1>{t(`landing.${mode}Headline`)}</h1>
+        <p>
+          {mode === 'compress'
+            ? t('landing.compressSubtitleAfter')
+            : mode === 'merge'
+              ? t('landing.mergeSubtitleAfter')
+              : t('landing.trimSubtitleAfter')}
+        </p>
+        <div className="tool-local-note">
+          <MaterialIcon name="lock" size={18} />
+          <span>{t('landing.privacyNote')}</span>
+        </div>
+      </div>
 
-        <PanelDivider />
-
-        <PanelBody>
-          <div className="mb-space-4 flex shrink-0 rounded-lg border border-border p-1 bg-gray-50">
+      <div className="tool-ui" data-ui="video-compressor">
+        <div className="tool-ui-body">
+          <div className="tool-tabs" data-ui="mode-controls" role="group" aria-label={t('landing.tools')}>
             {(['compress', 'merge', 'trim'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
+                aria-pressed={mode === tab}
                 disabled={disabled}
                 onClick={() => switchMode(tab)}
-                className={`flex-1 min-h-9 rounded-md text-body-sm font-medium transition-colors cursor-pointer ${
-                  mode === tab ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink'
-                }`}
+                className="tool-tab"
               >
                 {t(`common.${tab}`)}
               </button>
@@ -374,14 +335,14 @@ export default function VideoSelector({
           </div>
 
           {mode === 'trim' && trimVideo ? (
-            <div className="app-inset shrink-0 px-3 py-2.5 flex items-center gap-3 text-body-sm">
+            <div className="selected-video">
               <MaterialIcon name="movie" size={20} className="text-accent shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-ink font-medium">{trimVideo.name}</p>
+                <p className="selected-video-name">{trimVideo.name}</p>
                 {trimProbing ? (
-                  <p className="text-xs text-muted mt-0.5">{t('phase.preparing')}</p>
+                  <p className="selected-video-meta">{t('phase.preparing')}</p>
                 ) : trimDurationSec != null ? (
-                  <p className="text-xs text-muted mt-0.5">
+                  <p className="selected-video-meta">
                     {t('trim.duration', { duration: formatTimestamp(trimDurationSec) })}
                   </p>
                 ) : null}
@@ -390,48 +351,45 @@ export default function VideoSelector({
                 type="button"
                 disabled={disabled || trimProbing}
                 onClick={() => fileInputRef.current?.click()}
-                className="shrink-0 text-xs font-medium text-accent hover:text-accent-hover cursor-pointer disabled:opacity-50"
+                className="text-action"
               >
                 {t('landing.browseSingle')}
               </button>
             </div>
           ) : (
-            <PanelInset className="relative overflow-hidden shrink-0">
-              <div className="absolute inset-0 pointer-events-none opacity-[0.03] stitch-grid-bg" />
-              <div
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && handleZoneClick()}
+            <div className="drop-zone-wrap">
+              <button
+                type="button"
+                disabled={disabled}
+                data-ui="video-drop-zone"
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={handleZoneClick}
-                className={`drop-zone w-full relative z-10 ${
-                  isDragActive ? 'is-dragging' : ''
-                } ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${
+                className={`drop-zone ${isDragActive ? 'is-dragging' : ''} ${
                   mode === 'trim' ? 'drop-zone-compact' : ''
                 }`}
               >
-                <CompressOIcon name="addMedia" size={mode === 'trim' ? 40 : 52} className="text-accent" />
-                <p className="text-sm mt-4 text-muted text-center">
+                <CompressOIcon name="addMedia" size={mode === 'trim' ? 42 : 52} className="text-accent" />
+                <span className="drop-zone-title">
                   {t('landing.dragDrop')}
-                  <span className="block text-xs mt-1">
-                    {mode === 'merge' ? t('landing.browseMultiple') : t('landing.browseSingle')}
-                  </span>
-                </p>
-                <p className="text-xs text-gray-400 mt-2">{t('landing.formats')}</p>
-              </div>
-            </PanelInset>
+                </span>
+                <span className="drop-zone-browse">
+                  {mode === 'merge' ? t('landing.browseMultiple') : t('landing.browseSingle')}
+                </span>
+                <span className="drop-zone-formats">{t('landing.formats')}</span>
+              </button>
+            </div>
           )}
 
           {mode === 'trim' ? (
-            <div className="mt-space-4 flex flex-col flex-1 min-h-0">
+            <div className="trim-controls">
               <div className="app-panel-body-scroll space-y-3 text-left pr-0.5">
                 <div>
-                  <label htmlFor="trim-ranges" className="block text-body-sm font-medium text-ink mb-1">
+                  <label htmlFor="trim-ranges" className="trim-label">
                     {t('trim.rangesLabel')}
                   </label>
-                  <p className="text-xs text-muted mb-2">{t('trim.rangesHint')}</p>
+                  <p className="trim-hint">{t('trim.rangesHint')}</p>
                   <textarea
                     id="trim-ranges"
                     rows={3}
@@ -442,30 +400,30 @@ export default function VideoSelector({
                       setError(null);
                     }}
                     placeholder={t('trim.rangesPlaceholder')}
-                    className="w-full min-h-[5.5rem] max-h-[min(12rem,28vh)] resize-y rounded-lg border border-border bg-surface px-3 py-2 text-body-sm text-ink placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-50"
+                    className="trim-input"
                   />
                   {parsedRangeCount > 0 && (
-                    <p className="mt-2 text-xs text-accent">
+                    <p className="trim-parsed">
                       {t('trim.parsedRanges', { count: parsedRangeCount })}
                     </p>
                   )}
                 </div>
 
                 {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-body-sm text-error">
+                  <div className="inline-error">
                     <PanelMascot variant="error" size="sm" className="shrink-0" />
                     <span className="text-left">{error}</span>
                   </div>
                 )}
               </div>
 
-              <div className="app-panel-actions">
+              <div className="tool-action-row">
                 <div className="flex justify-center">
                   <button
                     type="button"
                     disabled={disabled || !trimVideo || trimProbing || trimDurationSec == null}
                     onClick={handleTrim}
-                    className="pixel-btn w-full sm:w-auto"
+                    className="pixel-btn"
                   >
                     {t('common.trimAndCompress')}
                   </button>
@@ -474,7 +432,7 @@ export default function VideoSelector({
             </div>
           ) : null}
 
-          <AnimatedSection show={mode === 'merge' && clips.length > 0} className="mt-space-4 space-y-3 shrink-0">
+          <AnimatedSection show={mode === 'merge' && clips.length > 0} className="merge-clips">
             <ul
               ref={clipListRef}
               className="scrollbar-hidden max-h-[min(12rem,28vh)] space-y-2 overflow-y-auto overscroll-contain"
@@ -483,7 +441,7 @@ export default function VideoSelector({
                 <li
                   key={clip.id}
                   data-flip-id={clip.id}
-                  className="flex items-center gap-2 app-inset px-3 py-2 text-body-sm"
+                  className="merge-clip"
                 >
                   <MaterialIcon name="movie" size={18} className="text-accent shrink-0" />
                   <span className="flex-1 truncate text-ink">{clip.file.name}</span>
@@ -493,7 +451,7 @@ export default function VideoSelector({
                       aria-label={t('a11y.moveUp')}
                       disabled={index === 0}
                       onClick={() => moveClip(index, -1)}
-                      className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 cursor-pointer"
+                      className="clip-control"
                     >
                       <MaterialIcon name="arrow_upward" size={18} />
                     </button>
@@ -502,7 +460,7 @@ export default function VideoSelector({
                       aria-label={t('a11y.moveDown')}
                       disabled={index === clips.length - 1}
                       onClick={() => moveClip(index, 1)}
-                      className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 cursor-pointer"
+                      className="clip-control"
                     >
                       <MaterialIcon name="arrow_downward" size={18} />
                     </button>
@@ -510,7 +468,7 @@ export default function VideoSelector({
                       type="button"
                       aria-label={t('a11y.remove')}
                       onClick={() => removeClip(index)}
-                      className="p-1 rounded hover:bg-gray-100 cursor-pointer"
+                      className="clip-control"
                     >
                       <MaterialIcon name="close" size={18} />
                     </button>
@@ -531,13 +489,13 @@ export default function VideoSelector({
           </AnimatedSection>
 
           {error && mode !== 'trim' && (
-            <div className="mt-space-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-body-sm text-error">
+            <div className="inline-error">
               <PanelMascot variant="error" size="sm" className="shrink-0" />
               <span className="text-left">{error}</span>
             </div>
           )}
-        </PanelBody>
-      </ScreenPanel>
-    </div>
+        </div>
+      </div>
+    </section>
   );
 }

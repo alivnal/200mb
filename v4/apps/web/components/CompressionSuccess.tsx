@@ -54,22 +54,22 @@ export default function CompressionSuccess({ result, onReset }: CompressionSucce
               : ''}
           </p>
 
-          <div className="app-inset grid grid-cols-1 min-[480px]:grid-cols-2 min-[640px]:grid-cols-4 divide-y min-[480px]:divide-y-0 min-[480px]:divide-x divide-border">
-            <div className="panel-stat">
+          <div className="success-stats">
+            <div className="panel-stat success-stat">
               <span className="panel-stat-label">{t('success.saved')}</span>
               <span className="panel-stat-value text-headline-lg text-success">{percent}%</span>
             </div>
-            <div className="panel-stat">
+            <div className="panel-stat success-stat">
               <span className="panel-stat-label">{t('success.original')}</span>
               <span className="panel-stat-value text-headline-sm">{formatBytes(result.originalSize)}</span>
             </div>
-            <div className="panel-stat">
+            <div className="panel-stat success-stat">
               <span className="panel-stat-label">{t('success.newSize')}</span>
               <span className="panel-stat-value text-headline-sm text-accent">
                 {formatBytes(result.compressedSize)}
               </span>
             </div>
-            <div className="panel-stat">
+            <div className="panel-stat success-stat">
               <span className="panel-stat-label">{t('success.encodeTime')}</span>
               <span className="panel-stat-value text-headline-sm">
                 {result.encodeTimeMs != null ? formatElapsed(result.encodeTimeMs) : '—'}

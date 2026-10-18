@@ -44,8 +44,18 @@ npm run build:web:v4     # v4
 npm run dist
 ```
 
-**Vercel:** root `vercel.json` builds the v4 web app (`npm run build:web:v4`).
-The Vercel project can use the repository root as its Root Directory.
+**Vercel:** configure the project in **Settings → Build and Deployment**:
+
+- Set **Root Directory** to `v4/apps/web`.
+- Enable **Include source files outside the Root Directory** so the npm workspace can resolve
+  `@squish/i18n` from `v3/packages/i18n`.
+- Keep **Framework Preset** set to **Next.js** and use the app's `vercel.json` settings.
+- After changing the Root Directory, redeploy once with **Clear build cache** enabled.
+
+Do not use the repository root as the Vercel Root Directory. The root `vercel.json` invokes the
+V4 workspace build, which writes the routes manifest to `v4/apps/web/.next`; when Vercel treats
+the repository root as the Next.js project, it instead looks for `.next/routes-manifest.json` at
+the repository root and fails with `NEXT_NO_ROUTES_MANIFEST`.
 
 ## Notes
 

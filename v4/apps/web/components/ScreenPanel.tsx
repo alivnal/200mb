@@ -21,7 +21,9 @@ interface ScreenPanelProps {
 
 export function ScreenPanel({ children, size = 'lg', className = '' }: ScreenPanelProps) {
   return (
-    <div className={`app-panel w-full mx-auto ${sizeClasses[size]} ${className}`}>{children}</div>
+    <div data-ui="processing-panel" className={`app-panel w-full mx-auto ${sizeClasses[size]} ${className}`}>
+      {children}
+    </div>
   );
 }
 

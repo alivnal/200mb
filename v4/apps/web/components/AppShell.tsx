@@ -7,7 +7,7 @@
 
 import React from 'react';
 import AppFooter from './AppFooter';
-import PixelCursor from './PixelCursor';
+import AppHeader from './AppHeader';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -16,7 +16,7 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   return (
     <div className="flex flex-col min-h-[100dvh] w-full bg-canvas text-ink">
-      <PixelCursor />
+      <AppHeader />
       <div className="app-canvas flex-1">{children}</div>
       <AppFooter />
     </div>
