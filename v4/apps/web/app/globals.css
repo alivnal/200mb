@@ -457,9 +457,8 @@ body {
   gap: clamp(2rem, 6vw, 6rem);
   width: min(100%, 76rem);
   min-height: clamp(38rem, calc(100svh - 17rem), 56rem);
-  /* The 4x art hangs 200px below the card; this keeps its waterfall inside
-     the scroll area, so it ends at the footer instead of adding a scrollbar. */
-  padding-bottom: 9rem;
+  /* Lifts the card so its bottom edge lands on the diorama's front meadow. */
+  padding-bottom: 6.5rem;
   margin: auto;
 }
 
@@ -480,9 +479,10 @@ body {
   transform: translateX(-10%);
 }
 
-/* Squik hero shares the tool card's grid cell as a zero-size anchor at the
-   card's left edge and vertical centre. Offsets are whole multiples of the
-   art scale, placing the card on the diorama's empty front meadow. */
+/* Squik hero. Side by side, the stage is a zero-size anchor at the card's
+   bottom-left; SquikHero measures the page and sets the image's scale and
+   offsets so the whole scene fits between the header and the footer, with
+   the card on its empty front meadow. The image stays hidden until placed. */
 .squik-stage {
   position: relative;
   z-index: 0;
@@ -497,29 +497,15 @@ body {
 
 .squik-hero {
   position: absolute;
-  left: -600px;
-  top: -840px;
   display: block;
-  width: 1280px;
   max-width: none;
   height: auto;
   image-rendering: pixelated;
   user-select: none;
 }
 
-/* 4x needs a tall window; otherwise 3x, with the card set a little lower on
-   the meadow so it covers less of the scene. The 3x art hangs only 75px
-   below the card, so a little bottom padding is enough. */
-@media (max-width: 1180px), (max-height: 1079px) {
-  .tool-layout {
-    padding-bottom: 2rem;
-  }
-
-  .squik-hero {
-    left: -450px;
-    top: -705px;
-    width: 960px;
-  }
+.squik-hero:not([data-ready]) {
+  visibility: hidden;
 }
 
 .dam-pixel-svg {
@@ -1180,9 +1166,8 @@ body {
 @media (max-width: 900px) {
   .tool-layout {
     grid-template-columns: minmax(0, 1fr);
-    /* Room above the card for the diorama; the card sits on its front edge. */
     align-items: start;
-    padding-top: 24rem;
+    padding-top: 0;
     padding-bottom: 0;
     gap: 2rem;
     max-width: 44rem;
@@ -1194,21 +1179,27 @@ body {
     opacity: 0.62;
   }
 
+  /* Stacked: the whole scene sits in its own row above the card, scaled to
+     fit the column (2x at most), so nothing is ever cut or covered. */
   .squik-stage {
     grid-column: 1;
-    justify-self: center;
-    align-self: start;
+    grid-row: 1;
+    justify-self: stretch;
+    align-self: end;
+    width: auto;
+    height: auto;
   }
 
   .squik-hero {
-    left: -320px;
-    /* Front edge of the diorama (art row 190) meets the top of the card. */
-    top: -380px;
-    width: 640px;
+    position: static;
+    width: min(100%, 640px);
+    margin: 0 auto;
+    visibility: visible;
   }
 
   .tool-ui {
     grid-column: 1;
+    grid-row: 2;
   }
 
   .tool-intro h1 {
@@ -1230,7 +1221,7 @@ body {
   .tool-layout {
     gap: 1.75rem;
     margin: 0 auto;
-    padding-top: 24rem;
+    padding-top: 0;
   }
 
   .dam-environment {
@@ -1325,19 +1316,5 @@ body {
   .drop-zone,
   .drop-zone > * {
     animation: none;
-  }
-}
-
-/* Phones: 2x no longer fits, so the diorama spans the viewport width. The
-   scale is fractional, which high-density screens render evenly enough. */
-@media (max-width: 640px) {
-  .tool-layout {
-    padding-top: calc(59vw - 2.25rem);
-  }
-
-  .squik-hero {
-    left: -50vw;
-    top: -59vw;
-    width: 100vw;
   }
 }
