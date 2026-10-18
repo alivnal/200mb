@@ -478,7 +478,7 @@ async function compressFileWithFfmpeg(
   if (isCancelled(session)) throw new CompressionCancelledError();
   jobProgress.enterPhase('loading', 1);
 
-  const inputName = `input${extFromName(file.name)}`;
+  const inputName = file.name;
   const inputDirectory = '/input';
   let inputDirectoryCreated = false;
   let inputMounted = false;
@@ -489,12 +489,16 @@ async function compressFileWithFfmpeg(
     inputDirectoryCreated = true;
     const mounted = await ffmpeg.mount(
       'WORKERFS' as Parameters<typeof ffmpeg.mount>[0],
-      { blobs: [{ name: inputName, data: file }] },
+      { files: [file] },
       inputDirectory,
     );
     if (!mounted) throw new Error(t('errors.largeFileInputUnsupported'));
     inputMounted = true;
     if (isCancelled(session)) throw new CompressionCancelledError();
+    const mountedFiles = await ffmpeg.listDir(inputDirectory);
+    if (!mountedFiles.some((entry) => entry.name === inputName && !entry.isDir)) {
+      throw new Error(t('errors.largeFileInputUnsupported'));
+    }
     jobProgress.enterPhase('uploading', 1);
 
     const mountedInputName = `${inputDirectory}/${inputName}`;
