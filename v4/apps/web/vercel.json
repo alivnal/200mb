@@ -24,6 +24,10 @@
       "headers": [{ "key": "Cross-Origin-Resource-Policy", "value": "same-origin" }]
     },
     {
+      "source": "/hero/(.*)",
+      "headers": [{ "key": "Cross-Origin-Resource-Policy", "value": "same-origin" }]
+    },
+    {
       "source": "/(.*)\\.svg",
       "headers": [{ "key": "Cross-Origin-Resource-Policy", "value": "same-origin" }]
     },
