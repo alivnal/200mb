@@ -40,10 +40,14 @@ function measureFit(stage: HTMLElement, card: HTMLElement, currentShift: number)
   );
   // Half steps land on whole device pixels on 2x screens, so the art stays crisp.
   const scale = Math.max(1, Math.floor(fits * 2) / 2);
-  const imageTop = top + (bottom - top - HEIGHT * scale) / 2;
+  // Centre the scene, but lift it when a tall card (long clip lists) needs the
+  // room below. If even that is not enough, the card runs past the fold and
+  // the page scrolls; it never rises over the scene.
+  const centred = top + (bottom - top - HEIGHT * scale) / 2;
+  const roomForCard = bottom - box.height - MEADOW_Y * scale;
+  const imageTop = Math.max(top, Math.min(centred, roomForCard));
   const imageLeft = box.left - MEADOW_X * scale;
-  // A tall card (long clip lists) may rise into the scene rather than overflow.
-  const cardTop = Math.min(imageTop + MEADOW_Y * scale, bottom - box.height);
+  const cardTop = imageTop + MEADOW_Y * scale;
   return {
     scale,
     left: imageLeft - anchor.left,
