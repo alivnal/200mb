@@ -19,6 +19,7 @@ import { useFlipList } from '@/hooks/useFlipList';
 import CompressOIcon from './CompressOIcon';
 import MaterialIcon from './MaterialIcon';
 import PanelMascot from './mascot/PanelMascot';
+import DamEnvironment from './DamEnvironment';
 
 const VIDEO_ACCEPT = 'video/mp4,video/quicktime,video/webm,video/x-matroska,.mp4,.mov,.webm,.mkv';
 const VIDEO_EXT = /\.(mp4|mov|mkv|webm|avi|m4v)$/i;
@@ -302,20 +303,7 @@ export default function VideoSelector({
         </div>
       )}
 
-      <div className="tool-intro">
-        <h1>{t(`landing.${mode}Headline`)}</h1>
-        <p>
-          {mode === 'compress'
-            ? t('landing.compressSubtitleAfter')
-            : mode === 'merge'
-              ? t('landing.mergeSubtitleAfter')
-              : t('landing.trimSubtitleAfter')}
-        </p>
-        <div className="tool-local-note">
-          <MaterialIcon name="lock" size={18} />
-          <span>{t('landing.privacyNote')}</span>
-        </div>
-      </div>
+      <DamEnvironment />
 
       <div className="tool-ui" data-ui="video-compressor">
         <div className="tool-ui-body">

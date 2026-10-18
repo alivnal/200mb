@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../components/iso/iso.css";
 
 @theme {
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -447,16 +448,99 @@ body {
 }
 
 .tool-layout {
+  position: relative;
+  isolation: isolate;
   display: grid;
   grid-template-columns: minmax(17rem, 0.86fr) minmax(30rem, 1.14fr);
   align-items: center;
   gap: clamp(2rem, 6vw, 6rem);
   width: min(100%, 76rem);
+  min-height: clamp(38rem, 72vh, 48rem);
   margin: auto;
 }
 
 .tool-intro {
   max-width: 34rem;
+}
+
+.dam-environment {
+  position: absolute;
+  z-index: 0;
+  inset: -4rem -8rem;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  pointer-events: none;
+  opacity: 0.92;
+  transform: translateX(-10%);
+}
+
+.dam-pixel-svg {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  overflow: visible;
+  shape-rendering: crispEdges;
+  image-rendering: pixelated;
+}
+
+.dam-pixel-svg polygon,
+.dam-pixel-svg rect {
+  shape-rendering: crispEdges;
+}
+
+.dam-pixel-svg [data-step] {
+  display: none;
+}
+
+.dam-pixel-svg[data-stage="0"] [data-step="0"],
+.dam-pixel-svg[data-stage="1"] [data-step="1"],
+.dam-pixel-svg[data-stage="1"] [data-step="0"],
+.dam-pixel-svg[data-stage="2"] [data-step="1"],
+.dam-pixel-svg[data-stage="2"] [data-step="2"],
+.dam-pixel-svg[data-stage="3"] [data-step="1"],
+.dam-pixel-svg[data-stage="3"] [data-step="2"],
+.dam-pixel-svg[data-stage="3"] [data-step="3"] {
+  display: inline;
+}
+
+.tool-ui {
+  grid-column: 2;
+  position: relative;
+  z-index: 1;
+}
+
+.pixel-water-glint {
+  animation: pixel-water 980ms steps(2, end) infinite alternate;
+}
+
+.pixel-waterfall-flow {
+  animation: pixel-waterfall-fall 520ms steps(4, end) infinite;
+}
+
+.pixel-waterfall-splash {
+  animation: pixel-waterfall-splash 680ms steps(3, end) infinite alternate;
+}
+
+@keyframes pixel-water {
+  to { opacity: 0.25; }
+}
+
+@keyframes pixel-waterfall-fall {
+  to { transform: translateY(8px); }
+}
+
+@keyframes pixel-waterfall-splash {
+  to { transform: translateY(3px); opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pixel-water-glint,
+  .pixel-waterfall-flow,
+  .pixel-waterfall-splash {
+    animation: none;
+  }
 }
 
 .tool-intro h1 {
@@ -499,7 +583,7 @@ body {
   padding: clamp(1.25rem, 3vw, 2rem);
   overflow: hidden;
   border-radius: 8px;
-  background-color: var(--color-surface);
+  background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
 }
 
 .tool-ui-body {
@@ -1041,6 +1125,16 @@ body {
     grid-template-columns: minmax(0, 1fr);
     gap: 2rem;
     max-width: 44rem;
+    min-height: clamp(36rem, 68vh, 46rem);
+  }
+
+  .dam-environment {
+    inset: -3rem -2rem;
+    opacity: 0.62;
+  }
+
+  .tool-ui {
+    grid-column: 1;
   }
 
   .tool-intro h1 {
@@ -1062,6 +1156,15 @@ body {
   .tool-layout {
     gap: 1.75rem;
     margin: 0 auto;
+    padding-top: 10rem;
+  }
+
+  .dam-environment {
+    inset: auto -2rem;
+    top: -3rem;
+    height: 16rem;
+    opacity: 0.88;
+    transform: none;
   }
 
   .tool-intro {
