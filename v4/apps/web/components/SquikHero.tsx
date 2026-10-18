@@ -3,11 +3,11 @@
 import { useTheme } from '@/app/providers';
 import { useStillness } from './iso/react/live';
 
-// Pixel-art hero rendered in Aseprite (beaver-dam-pixel/squik_hero.lua):
-// 320x200 native, seamless 120-frame loop, transparent background. Day art
+// Pixel-art hero rendered in Aseprite from art/squik-hero (run build.sh):
+// 320x260 native, seamless 120-frame loop, transparent background. Day art
 // follows the light theme, night art the dark theme.
 const WIDTH = 320;
-const HEIGHT = 200;
+const HEIGHT = 260;
 
 export default function SquikHero() {
   const still = useStillness();
