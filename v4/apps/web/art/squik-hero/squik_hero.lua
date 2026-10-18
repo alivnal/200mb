@@ -877,7 +877,9 @@ local SKY = {
   moon = hex("#f4f0d6"), moonShade = hex("#d9d2b0"), halo = hex("#22304f"),
   star = hex("#eef2ff"), starDim = hex("#8fa3cc"),
 }
-local SUN_X, SUN_Y = 262, 24
+-- Low enough that the 4x layout, which starts slightly above the viewport,
+-- keeps the sun and moon clear of the site header.
+local SUN_X, SUN_Y = 280, 40
 
 local function skyPx(img, x, y, c) if x >= 0 and y >= 0 and x < W and y < H then img:drawPixel(x, y, c) end end
 
@@ -912,13 +914,13 @@ local function drawSky(img, t)
         end
       end
     end
-    cloud(img, 222 + math.floor(4 * wave + 0.5), 14)
-    cloud(img, 40 + math.floor(-3 * wave + 0.5), 20)
-    cloud(img, 292 + math.floor(-2 * wave + 0.5), 46)
+    cloud(img, 128 + math.floor(4 * wave + 0.5), 36)
+    cloud(img, 54 + math.floor(-3 * wave + 0.5), 42)
+    cloud(img, 300 + math.floor(-2 * wave + 0.5), 62)
     -- Three birds cross once per loop, flapping every 4 frames.
     for n = 0, 2 do
       local x = -24 + t * 3 - n * 9
-      local y = 34 + n * 4 + math.floor(math.sin((t + n * 7) / 6) + 0.5)
+      local y = 46 + n * 4 + math.floor(math.sin((t + n * 7) / 6) + 0.5)
       local up = ((t + n * 2) // 4) % 2 == 0
       skyPx(img, x, y, SKY.bird)
       skyPx(img, x - 1, y + (up and -1 or 0), SKY.bird); skyPx(img, x + 1, y + (up and -1 or 0), SKY.bird)
