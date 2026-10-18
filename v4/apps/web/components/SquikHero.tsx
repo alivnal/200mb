@@ -9,23 +9,26 @@ import { useStillness } from './iso/react/live';
 // follows the light theme, night art the dark theme.
 const WIDTH = 320;
 const HEIGHT = 260;
-// Art column under the card's left edge: the start of the empty front meadow.
+// Art point where the card's top-left corner goes. Right of and below it is
+// only empty meadow and transparent canvas, so the card never covers the
+// pond, lodge, dam, waterfall or any beaver, whatever the scale.
 const MEADOW_X = 150;
+const MEADOW_Y = 118;
 const GAP = 8;
 const MAX_SCALE = 4;
 const SIDE_BY_SIDE = '(min-width: 901px)';
 
-type Fit = { scale: number; left: number; top: number };
+type Fit = { scale: number; left: number; top: number; cardShift: number };
 
 // Largest scale at which the whole scene fits between the header and the
-// bottom of the scroll area and inside the window, with the card's left edge
-// on the meadow. Offsets are relative to the stage at the card's bottom-left.
-function measureFit(stage: HTMLElement): Fit | null {
-  const card = stage.parentElement?.querySelector<HTMLElement>('.tool-ui');
-  if (!card) return null;
+// bottom of the scroll area and inside the window, given the card's column.
+// Returns the image offsets relative to the stage and how far to move the
+// card vertically so its corner lands on the meadow.
+function measureFit(stage: HTMLElement, card: HTMLElement, currentShift: number): Fit {
   const header = document.querySelector('.app-header');
   const scroller = stage.closest('.screen-content');
   const box = card.getBoundingClientRect();
+  const anchor = stage.getBoundingClientRect();
   const top = (header?.getBoundingClientRect().bottom ?? 0) + GAP;
   const bottom = (scroller?.getBoundingClientRect().bottom ?? window.innerHeight) - GAP;
   const right = document.documentElement.clientWidth - GAP;
@@ -37,7 +40,16 @@ function measureFit(stage: HTMLElement): Fit | null {
   );
   // Half steps land on whole device pixels on 2x screens, so the art stays crisp.
   const scale = Math.max(1, Math.floor(fits * 2) / 2);
-  return { scale, left: -MEADOW_X * scale, top: bottom - HEIGHT * scale - box.bottom };
+  const imageTop = top + (bottom - top - HEIGHT * scale) / 2;
+  const imageLeft = box.left - MEADOW_X * scale;
+  // A tall card (long clip lists) may rise into the scene rather than overflow.
+  const cardTop = Math.min(imageTop + MEADOW_Y * scale, bottom - box.height);
+  return {
+    scale,
+    left: imageLeft - anchor.left,
+    top: imageTop - anchor.top,
+    cardShift: cardTop - (box.top - currentShift),
+  };
 }
 
 export default function SquikHero() {
@@ -45,14 +57,25 @@ export default function SquikHero() {
   const { resolvedTheme } = useTheme();
   const time = resolvedTheme === 'dark' ? 'night' : 'day';
   const stageRef = useRef<HTMLDivElement>(null);
+  const shiftRef = useRef(0);
   const [fit, setFit] = useState<Fit | null>(null);
 
   useLayoutEffect(() => {
     const stage = stageRef.current;
-    if (!stage) return;
+    const layout = stage?.parentElement;
+    const card = layout?.querySelector<HTMLElement>('.tool-ui');
+    if (!stage || !layout || !card) return;
     const sideBySide = window.matchMedia(SIDE_BY_SIDE);
-    const card = stage.parentElement?.querySelector('.tool-ui');
-    const measure = () => setFit(sideBySide.matches ? measureFit(stage) : null);
+
+    const measure = () => {
+      const next = sideBySide.matches ? measureFit(stage, card, shiftRef.current) : null;
+      shiftRef.current = next?.cardShift ?? 0;
+      // The card reads this through `translate`, which leaves layout alone and
+      // composes with its slide-in animation.
+      if (next) layout.style.setProperty('--squik-card-shift', `${next.cardShift}px`);
+      else layout.style.removeProperty('--squik-card-shift');
+      setFit(next);
+    };
     let frame = 0;
     const update = () => {
       cancelAnimationFrame(frame);
@@ -62,17 +85,18 @@ export default function SquikHero() {
     measure();
     const observer = new ResizeObserver(update);
     observer.observe(document.documentElement);
-    if (card) observer.observe(card);
+    observer.observe(card);
     // The card slides in on load; measure again once it has settled.
-    card?.addEventListener('animationend', update);
+    card.addEventListener('animationend', update);
     sideBySide.addEventListener('change', update);
     window.addEventListener('resize', update);
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
-      card?.removeEventListener('animationend', update);
+      card.removeEventListener('animationend', update);
       sideBySide.removeEventListener('change', update);
       window.removeEventListener('resize', update);
+      layout.style.removeProperty('--squik-card-shift');
     };
   }, []);
 
