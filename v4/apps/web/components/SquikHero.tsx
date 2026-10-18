@@ -20,10 +20,16 @@ const SIDE_BY_SIDE = '(min-width: 901px)';
 
 type Fit = { scale: number; left: number; top: number; cardShift: number };
 
-// Largest scale at which the whole scene fits between the header and the
-// bottom of the scroll area and inside the window, given the card's column.
-// Returns the image offsets relative to the stage and how far to move the
-// card vertically so its corner lands on the meadow.
+// Half steps land on whole device pixels on 2x screens, so the art stays crisp.
+const halfStep = (scale: number) => Math.max(1, Math.floor(scale * 2) / 2);
+
+// Places the whole scene between the header and the bottom of the scroll area
+// and inside the window, never under the card, and the whole card on screen.
+// Two layouts compete and the one showing the scene larger wins:
+// - meadow: the card's corner sits on the empty front meadow (short cards);
+// - beside: the scene sits entirely left of the card (tall cards: trim,
+//   long clip lists), with the card centred vertically.
+// Returns image offsets relative to the stage and the card's vertical move.
 function measureFit(stage: HTMLElement, card: HTMLElement, currentShift: number): Fit {
   const header = document.querySelector('.app-header');
   const scroller = stage.closest('.screen-content');
@@ -32,22 +38,33 @@ function measureFit(stage: HTMLElement, card: HTMLElement, currentShift: number)
   const top = (header?.getBoundingClientRect().bottom ?? 0) + GAP;
   const bottom = (scroller?.getBoundingClientRect().bottom ?? window.innerHeight) - GAP;
   const right = document.documentElement.clientWidth - GAP;
-  const fits = Math.min(
+  const room = bottom - top;
+
+  const meadow = halfStep(Math.min(
     MAX_SCALE,
-    (bottom - top) / HEIGHT,
+    room / HEIGHT,
+    (room - box.height) / MEADOW_Y,
     (box.left - GAP) / MEADOW_X,
     (right - box.left) / (WIDTH - MEADOW_X),
-  );
-  // Half steps land on whole device pixels on 2x screens, so the art stays crisp.
-  const scale = Math.max(1, Math.floor(fits * 2) / 2);
-  // Centre the scene, but lift it when a tall card (long clip lists) needs the
-  // room below. If even that is not enough, the card runs past the fold and
-  // the page scrolls; it never rises over the scene.
-  const centred = top + (bottom - top - HEIGHT * scale) / 2;
-  const roomForCard = bottom - box.height - MEADOW_Y * scale;
-  const imageTop = Math.max(top, Math.min(centred, roomForCard));
-  const imageLeft = box.left - MEADOW_X * scale;
-  const cardTop = imageTop + MEADOW_Y * scale;
+  ));
+  const beside = halfStep(Math.min(MAX_SCALE, room / HEIGHT, (box.left - 2 * GAP) / WIDTH));
+
+  let scale: number;
+  let imageLeft: number;
+  let imageTop: number;
+  let cardTop: number;
+  if (meadow >= beside) {
+    scale = meadow;
+    imageLeft = box.left - MEADOW_X * scale;
+    // Centre scene and card together.
+    imageTop = top + (room - Math.max(HEIGHT * scale, MEADOW_Y * scale + box.height)) / 2;
+    cardTop = imageTop + MEADOW_Y * scale;
+  } else {
+    scale = beside;
+    imageLeft = GAP + (box.left - 2 * GAP - WIDTH * scale) / 2;
+    imageTop = top + (room - HEIGHT * scale) / 2;
+    cardTop = top + Math.max(0, (room - box.height) / 2);
+  }
   return {
     scale,
     left: imageLeft - anchor.left,
