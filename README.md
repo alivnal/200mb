@@ -44,8 +44,8 @@ npm run build:web:v4     # v4
 npm run dist
 ```
 
-**Vercel:** root `vercel.json` builds the v3 web app (`npm run build:web`).
-To deploy v4, set Root Directory to `v4/apps/web` and Build Command to `npm run build`.
+**Vercel:** root `vercel.json` builds the v4 web app (`npm run build:web:v4`).
+The Vercel project can use the repository root as its Root Directory.
 
 ## Notes
 
