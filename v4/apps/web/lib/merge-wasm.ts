@@ -8,6 +8,7 @@ import { fetchFile } from '@ffmpeg/util';
 import type { FFmpeg } from '@ffmpeg/ffmpeg';
 import { CompressionCancelledError, type VideoProbeMetadata } from '@/lib/squish-core';
 import { extFromName, loadFFmpeg, probeVideoFile } from './compress-wasm';
+import { probeHasAudioInFfmpeg } from './trim-wasm';
 import { WEB_MERGE_MAX_DIMENSION } from './web-compress-strategy';
 
 function t(key: string): string {
@@ -31,22 +32,6 @@ function capMergeDimensions(width: number, height: number): { width: number; hei
   };
 }
 
-async function probeHasAudio(ffmpeg: FFmpeg, inputName: string): Promise<boolean> {
-  let log = '';
-  const handler = ({ message }: { message: string }) => {
-    log += `${message}\n`;
-  };
-  ffmpeg.on('log', handler);
-  try {
-    await ffmpeg.exec(['-hide_banner', '-i', inputName]);
-  } catch {
-    // ffmpeg -i exits non-zero when no output is specified — that's expected.
-  } finally {
-    ffmpeg.off('log', handler);
-  }
-  return /Audio:/i.test(log);
-}
-
 function buildFilterMergeArgs(
   inputNames: string[],
   probes: VideoProbeMetadata[],
@@ -56,7 +41,7 @@ function buildFilterMergeArgs(
   const maxW = evenDimension(Math.max(...probes.map((p) => p.width)));
   const maxH = evenDimension(Math.max(...probes.map((p) => p.height)));
   const capped = capMergeDimensions(maxW, maxH);
-  const allHaveAudio = hasAudio.every(Boolean);
+  const hasAnyAudio = hasAudio.some(Boolean);
 
   const args = ['-y', '-hide_banner', '-loglevel', 'error', '-nostats'];
   for (const inputName of inputNames) {
@@ -72,15 +57,21 @@ function buildFilterMergeArgs(
     );
     concatInputs.push(`[v${i}]`);
 
-    if (allHaveAudio) {
-      filterParts.push(
-        `[${i}:a]aformat=sample_rates=48000:channel_layouts=stereo,aresample=async=1:first_pts=0[a${i}]`,
-      );
+    if (hasAnyAudio) {
+      if (hasAudio[i]) {
+        filterParts.push(
+          `[${i}:a]aformat=sample_rates=48000:channel_layouts=stereo,aresample=async=1:first_pts=0[a${i}]`,
+        );
+      } else {
+        filterParts.push(
+          `anullsrc=channel_layout=stereo:sample_rate=48000,atrim=duration=${probes[i].duration},asetpts=PTS-STARTPTS[a${i}]`,
+        );
+      }
       concatInputs.push(`[a${i}]`);
     }
   }
 
-  if (allHaveAudio) {
+  if (hasAnyAudio) {
     filterParts.push(
       `${concatInputs.join('')}concat=n=${inputNames.length}:v=1:a=1[outv][outa]`,
     );
@@ -90,7 +81,7 @@ function buildFilterMergeArgs(
 
   args.push('-filter_complex', filterParts.join(';'));
   args.push('-map', '[outv]');
-  if (allHaveAudio) {
+  if (hasAnyAudio) {
     args.push('-map', '[outa]', '-c:a', 'aac', '-b:a', '96k');
   } else {
     args.push('-an');
@@ -122,7 +113,13 @@ export async function mergeVideosWasm(
     onLoadProgress?: (progress: number) => void;
     isCancelled?: () => boolean;
   },
-): Promise<{ blob: Blob; metadata: VideoProbeMetadata; totalInputSize: number }> {
+): Promise<{
+  ffmpeg: FFmpeg;
+  outputName: string;
+  metadata: VideoProbeMetadata;
+  totalInputSize: number;
+  hasAudio: boolean;
+}> {
   if (files.length < 2) {
     throw new Error(t('errors.mergeMinTwo'));
   }
@@ -138,12 +135,16 @@ export async function mergeVideosWasm(
   ]);
   if (isCancelled?.()) throw new CompressionCancelledError();
 
-  const inputNames = files.map((f, i) => `merge_input_${i}${extFromName(f.name)}`);
+  const inputNames: string[] = [];
+  const hasAudio: boolean[] = [];
+  const mountedDirectories: string[] = [];
+  const memoryInputNames: string[] = [];
   const outputName = 'merged.mp4';
+  let mergeSucceeded = false;
 
   try {
-    // ── Phase 2: upload files to WASM FS with per-file progress ─────────
-    const totalBytes = totalInputSize;
+    // ── Phase 2: mount files without copying large inputs into WASM memory ─
+    const totalBytes = Math.max(totalInputSize, 1);
     let uploadedBytes = 0;
 
     for (let i = 0; i < files.length; i++) {
@@ -152,8 +153,6 @@ export async function mergeVideosWasm(
       const file = files[i];
       const uploadStart = Date.now();
       const budget = estimateUploadMs(file.size);
-
-      // Tick progress during fetch+write
       const ticker = window.setInterval(() => {
         if (isCancelled?.()) return;
         const ratio = Math.min(0.95, (Date.now() - uploadStart) / budget);
@@ -161,24 +160,78 @@ export async function mergeVideosWasm(
         onProgress?.((uploadedBytes / totalBytes) + ratio * fileFraction);
       }, 200);
 
+      const inputDirectory = `/merge_input_${i}`;
+      const fallbackInputName = `merge_fallback_${i}${extFromName(file.name)}`;
+      let mountedInputName: string | null = null;
+      let hasAudioForInput = false;
       try {
-        await ffmpeg.writeFile(inputNames[i], await fetchFile(file));
+        try {
+          await ffmpeg.createDir(inputDirectory);
+          const mounted = await ffmpeg.mount(
+            'WORKERFS' as Parameters<typeof ffmpeg.mount>[0],
+            { files: [file] },
+            inputDirectory,
+          );
+          if (mounted) {
+            mountedDirectories.push(inputDirectory);
+            const entries = await ffmpeg.listDir(inputDirectory);
+            if (entries.some((entry) => entry.name === file.name && !entry.isDir)) {
+              mountedInputName = `${inputDirectory}/${file.name}`;
+              try {
+                hasAudioForInput = await probeHasAudioInFfmpeg(ffmpeg, mountedInputName);
+              } catch (error) {
+                if (
+                  !(error instanceof Error) ||
+                  !/No such file or directory|does not exist|could not read input|aborted\(\)/i.test(
+                    error.message,
+                  )
+                ) {
+                  throw error;
+                }
+                mountedInputName = null;
+              }
+            }
+          }
+        } catch (error) {
+          if (isCancelled?.()) throw new CompressionCancelledError();
+          console.warn(
+            `[Squish] Could not mount merge input ${i + 1}; using a memory-backed input.`,
+            error,
+          );
+          mountedInputName = null;
+        }
+
+        if (!mountedInputName) {
+          try {
+            await ffmpeg.unmount(inputDirectory);
+          } catch {
+            // The mount may have failed before it was created.
+          }
+          try {
+            await ffmpeg.deleteDir(inputDirectory);
+          } catch {
+            // The directory may already have been removed.
+          }
+          const mountedIndex = mountedDirectories.indexOf(inputDirectory);
+          if (mountedIndex >= 0) mountedDirectories.splice(mountedIndex, 1);
+          await ffmpeg.writeFile(fallbackInputName, await fetchFile(file));
+          memoryInputNames.push(fallbackInputName);
+          mountedInputName = fallbackInputName;
+          hasAudioForInput = await probeHasAudioInFfmpeg(ffmpeg, mountedInputName);
+        }
       } finally {
         window.clearInterval(ticker);
       }
 
+      if (!mountedInputName) throw new Error(`Could not prepare merge input ${i + 1}.`);
+      inputNames.push(mountedInputName);
+      hasAudio.push(hasAudioForInput);
       uploadedBytes += file.size;
       onProgress?.(uploadedBytes / totalBytes);
       if (isCancelled?.()) throw new CompressionCancelledError();
     }
 
-    // ── Phase 3: probe audio for each input ──────────────────────────────
-    const hasAudio: boolean[] = await Promise.all(
-      inputNames.map((name) => probeHasAudio(ffmpeg, name)),
-    );
-    if (isCancelled?.()) throw new CompressionCancelledError();
-
-    // ── Phase 4: merge encode ────────────────────────────────────────────
+    // ── Phase 3: merge encode ────────────────────────────────────────────
     const totalDurationSeconds = probes.reduce((s, p) => s + p.duration, 0);
     const args = buildFilterMergeArgs(inputNames, probes, hasAudio, outputName);
 
@@ -188,41 +241,58 @@ export async function mergeVideosWasm(
       onProgress?.(ratio);
     };
 
+    const diagnostics: string[] = [];
+    const logHandler = ({ message }: { message: string }) => {
+      if (message.trim()) {
+        diagnostics.push(message.trim());
+        if (diagnostics.length > 20) diagnostics.shift();
+      }
+    };
     ffmpeg.on('progress', progressHandler);
+    ffmpeg.on('log', logHandler);
     let code: number;
     try {
       code = await ffmpeg.exec(args);
     } finally {
       ffmpeg.off('progress', progressHandler);
+      ffmpeg.off('log', logHandler);
     }
 
     if (isCancelled?.()) throw new CompressionCancelledError();
-    if (code !== 0) throw new Error(t('errors.mergeFailed'));
+    if (code !== 0) {
+      const detail = diagnostics.slice(-5).join(' | ');
+      throw new Error(detail ? `${t('errors.mergeFailed')} ${detail}` : t('errors.mergeFailed'));
+    }
 
-    // ── Phase 5: read output + build metadata from probed dims ───────────
-    const data = await ffmpeg.readFile(outputName);
-    const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(data);
-    const blob = new Blob([bytes], { type: 'video/mp4' });
-
-    // Derive merged metadata: use probed dims/duration, avoid a second FFmpeg probe.
+    // ── Phase 4: pass the intermediate directly to compression ──────────
     const maxW = Math.max(...probes.map((p) => p.width));
     const maxH = Math.max(...probes.map((p) => p.height));
     const capped = capMergeDimensions(maxW, maxH);
     const mergedMeta: VideoProbeMetadata = {
       name: 'merged.mp4',
-      size: blob.size,
+      size: totalInputSize,
       duration: totalDurationSeconds,
       width: capped.width,
       height: capped.height,
     };
 
     onProgress?.(1);
-    return { blob, metadata: mergedMeta, totalInputSize };
+    mergeSucceeded = true;
+    return {
+      ffmpeg,
+      outputName,
+      metadata: mergedMeta,
+      totalInputSize,
+      hasAudio: hasAudio.some(Boolean),
+    };
   } finally {
-    // Always clean up WASM FS — even on error or cancellation.
+    if (!mergeSucceeded) await ffmpeg.deleteFile(outputName).catch(() => {});
     await Promise.all([
-      ...inputNames.map((name) => ffmpeg.deleteFile(name).catch(() => {})),
-      ffmpeg.deleteFile(outputName).catch(() => {}),
+      ...memoryInputNames.map((name) => ffmpeg.deleteFile(name).catch(() => {})),
+      ...mountedDirectories.map(async (directory) => {
+        await ffmpeg.unmount(directory).catch(() => {});
+        await ffmpeg.deleteDir(directory).catch(() => {});
+      }),
     ]);
   }
 }

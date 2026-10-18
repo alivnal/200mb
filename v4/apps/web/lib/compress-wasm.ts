@@ -71,6 +71,11 @@ function basenameNoExt(name: string): string {
   return dot >= 0 ? base.slice(0, dot) : base;
 }
 
+function isUnreadableInputError(error: unknown): boolean {
+  return error instanceof Error &&
+    /No such file or directory|does not exist|could not read input|aborted\(\)/i.test(error.message);
+}
+
 function scaleProgress(
   snap: CompressionProgressSnapshot,
   offset: number,
@@ -120,9 +125,8 @@ export async function loadFFmpeg(onLoadProgress?: (ratio: number) => void): Prom
   }
   if (loadPromise) return loadPromise;
 
-  loadPromise = (async () => {
-    const ffmpeg = new FFmpeg();
-
+  const ffmpeg = new FFmpeg();
+  const pendingLoad = (async () => {
     // Track WASM download progress via the log channel.
     // @ffmpeg/ffmpeg emits a 'progress' event during toBlobURL fetch.
     ffmpeg.on('log', () => {});
@@ -165,7 +169,17 @@ export async function loadFFmpeg(onLoadProgress?: (ratio: number) => void): Prom
     return ffmpeg;
   })();
 
-  return loadPromise;
+  loadPromise = pendingLoad;
+  try {
+    return await pendingLoad;
+  } catch (error) {
+    if (loadPromise === pendingLoad) {
+      loadPromise = null;
+      ffmpegInstance = null;
+      ffmpeg.terminate();
+    }
+    throw error;
+  }
 }
 
 export function cancelWasmCompression(): void {
@@ -199,6 +213,7 @@ async function compressFromWasmFs(
     clipCount?: number;
     trimSegmentCount?: number;
     skipEncodeMaxBytes?: number;
+    forceEncode?: boolean;
   },
 ): Promise<WebCompressionResult> {
   const {
@@ -207,6 +222,7 @@ async function compressFromWasmFs(
     clipCount,
     trimSegmentCount,
     skipEncodeMaxBytes,
+    forceEncode = false,
   } = options ?? {};
 
   const filename = outputFilename ?? `${basenameNoExt(metadata.name)}_compressed.mp4`;
@@ -215,7 +231,7 @@ async function compressFromWasmFs(
   const withinSkipCeiling =
     skipEncodeMaxBytes === undefined || metadata.size <= skipEncodeMaxBytes;
 
-  if (metadata.size <= MAX_OUTPUT_BYTES && withinSkipCeiling) {
+  if (!forceEncode && metadata.size <= MAX_OUTPUT_BYTES && withinSkipCeiling) {
     jobProgress.finish();
     const bytes = await readWasmFileBytes(ffmpeg, inputName);
     const blob = new Blob([bytes], { type: 'video/mp4' });
@@ -489,36 +505,47 @@ async function compressFileWithFfmpeg(
     jobProgress.enterPhase('uploading', 0);
     await ffmpeg.createDir(inputDirectory);
     inputDirectoryCreated = true;
-    const mounted = await ffmpeg.mount(
-      'WORKERFS' as Parameters<typeof ffmpeg.mount>[0],
-      { files: [file] },
-      inputDirectory,
-    );
-    if (!mounted) throw new Error(t('errors.largeFileInputUnsupported'));
-    inputMounted = true;
-    if (isCancelled(session)) throw new CompressionCancelledError();
-    const mountedFiles = await ffmpeg.listDir(inputDirectory);
-    if (!mountedFiles.some((entry) => entry.name === inputName && !entry.isDir)) {
-      throw new Error(t('errors.largeFileInputUnsupported'));
-    }
-    let mountedInputName = `${inputDirectory}/${inputName}`;
-    let hasAudio: boolean;
+    let mountedInputName: string | null = null;
+    let hasAudio = false;
     try {
-      hasAudio = await probeHasAudio(ffmpeg, mountedInputName);
-    } catch (error) {
-      if (
-        !(error instanceof Error) ||
-        !/No such file or directory|does not exist/i.test(error.message)
-      ) {
-        throw error;
-      }
-      console.warn(
-        '[Squish] WORKERFS input is not readable; falling back to memory-backed input.',
+      const mounted = await ffmpeg.mount(
+        'WORKERFS' as Parameters<typeof ffmpeg.mount>[0],
+        { files: [file] },
+        inputDirectory,
       );
-      await ffmpeg.unmount(inputDirectory);
+      if (mounted) {
+        inputMounted = true;
+        if (isCancelled(session)) throw new CompressionCancelledError();
+        const mountedFiles = await ffmpeg.listDir(inputDirectory);
+        if (mountedFiles.some((entry) => entry.name === inputName && !entry.isDir)) {
+          mountedInputName = `${inputDirectory}/${inputName}`;
+          try {
+            hasAudio = await probeHasAudio(ffmpeg, mountedInputName);
+          } catch (error) {
+            if (isCancelled(session)) throw new CompressionCancelledError();
+            if (!isUnreadableInputError(error)) throw error;
+            mountedInputName = null;
+          }
+        }
+      }
+    } catch (error) {
+      if (isCancelled(session)) throw new CompressionCancelledError();
+      console.warn(
+        '[Squish] WORKERFS input could not be mounted; falling back to memory-backed input.',
+        error,
+      );
+      mountedInputName = null;
+    }
+
+    if (!mountedInputName) {
+      await ffmpeg.unmount(inputDirectory).catch(() => {});
       inputMounted = false;
-      await ffmpeg.deleteDir(inputDirectory);
-      inputDirectoryCreated = false;
+      if (inputDirectoryCreated) {
+        await ffmpeg.deleteDir(inputDirectory).catch(() => {});
+        inputDirectoryCreated = false;
+      }
+      if (isCancelled(session)) throw new CompressionCancelledError();
+      console.warn('[Squish] Using a memory-backed input for video compression.');
       await ffmpeg.writeFile(fallbackInputName, await fetchFile(file));
       inputWrittenToMemory = true;
       mountedInputName = fallbackInputName;
@@ -527,7 +554,7 @@ async function compressFileWithFfmpeg(
     if (isCancelled(session)) throw new CompressionCancelledError();
     jobProgress.enterPhase('uploading', 1);
 
-    return compressFromWasmFs(
+    return await compressFromWasmFs(
       ffmpeg,
       mountedInputName,
       metadata,
@@ -595,7 +622,7 @@ export async function mergeAndCompressVideosWasm(
     encodeElapsedMs: null,
   });
 
-  const { blob, metadata, totalInputSize } = await mergeVideosWasm(files, {
+  const merged = await mergeVideosWasm(files, {
     onLoadProgress,
     isCancelled: () => isCancelled(session),
     onProgress: (ratio) => {
@@ -609,23 +636,34 @@ export async function mergeAndCompressVideosWasm(
     },
   });
 
-  if (isCancelled(session)) throw new CompressionCancelledError();
-
   const firstBasename = basenameNoExt(files[0].name);
-  const mergedFile = new File([blob], `${firstBasename}_merged.mp4`, { type: 'video/mp4' });
+  try {
+    if (isCancelled(session)) throw new CompressionCancelledError();
 
-  const compressReporter = new CompressJobProgress((snap) => {
-    onProgress?.(scaleProgress(snap, 0.35, 0.65));
-  });
+    const compressReporter = new CompressJobProgress((snap) => {
+      onProgress?.(scaleProgress(snap, 0.35, 0.65));
+    });
 
-  const result = await compressFileWithFfmpeg(mergedFile, metadata, session, compressReporter, {
-    originalSize: totalInputSize,
-    outputFilename: `${firstBasename}_merged_compressed.mp4`,
-    clipCount: files.length,
-  });
+    const result = await compressFromWasmFs(
+      merged.ffmpeg,
+      merged.outputName,
+      merged.metadata,
+      merged.hasAudio,
+      session,
+      compressReporter,
+      {
+        originalSize: merged.totalInputSize,
+        outputFilename: `${firstBasename}_merged_compressed.mp4`,
+        clipCount: files.length,
+        forceEncode: true,
+      },
+    );
 
-  console.info(`[Squish] Merge+compress — merge ${formatElapsed(Date.now() - mergeStarted)}`);
-  return result;
+    console.info(`[Squish] Merge+compress — merge ${formatElapsed(Date.now() - mergeStarted)}`);
+    return result;
+  } finally {
+    await merged.ffmpeg.deleteFile(merged.outputName).catch(() => {});
+  }
 }
 
 export async function trimAndCompressVideosWasm(

@@ -242,19 +242,31 @@ export async function probeHasAudioInFfmpeg(
   inputName: string,
 ): Promise<boolean> {
   let log = '';
+  let execError: unknown;
   const handler = ({ message }: { message: string }) => {
     log += `${message}\n`;
   };
   ffmpeg.on('log', handler);
   try {
     await ffmpeg.exec(['-hide_banner', '-i', inputName]);
-  } catch {
-    // ffmpeg -i exits non-zero when no output is specified.
+  } catch (error) {
+    execError = error;
+    // Keep diagnostics because -i without an output may return non-zero.
   } finally {
     ffmpeg.off('log', handler);
   }
-  if (/No such file or directory|does not exist/i.test(log)) {
-    throw new Error(`FFmpeg could not open input "${inputName}": ${log.trim()}`);
+
+  const diagnostics = [
+    log.trim(),
+    execError instanceof Error ? execError.message : '',
+  ].filter(Boolean).join(' | ');
+  if (
+    /No such file or directory|does not exist/i.test(diagnostics) ||
+    !/Video:/i.test(log)
+  ) {
+    throw new Error(
+      `FFmpeg could not read input "${inputName}": ${diagnostics || 'No video stream was detected.'}`,
+    );
   }
   return /Audio:/i.test(log);
 }
