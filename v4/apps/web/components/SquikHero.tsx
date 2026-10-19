@@ -27,10 +27,16 @@ const sceneSrc = (scene: Scene, still: boolean) =>
 
 type Fit = { scale: number; left: number; top: number; cardShift: number };
 
-// Half steps land on whole device pixels on 2x screens, so the art stays crisp.
-// Below 1x, quarter steps down to 0.5x keep a small scene in narrow windows.
-const halfStep = (scale: number) =>
-  scale >= 1 ? Math.floor(scale * 2) / 2 : Math.max(0.5, Math.floor(scale * 4) / 4);
+// The scale the scene takes for the largest scale that fits. On 2x and 3x
+// screens it steps down to whole device pixels per art pixel, so the pixel art
+// stays crisp. Elsewhere crisp steps are too coarse (whole scales at 100%) or
+// fall between the sizes that fit (125%, 150%), so the scene takes all the
+// room it has. Never below 0.5x.
+function snapScale(scale: number): number {
+  const ratio = window.devicePixelRatio || 1;
+  const crisp = Number.isInteger(ratio) && ratio >= 2 ? Math.floor(scale * ratio) / ratio : scale;
+  return Math.max(0.5, crisp);
+}
 
 // The bottom of the first screen, in viewport coordinates: the page can be
 // taller than the window (short laptop screens), and everything placed here
@@ -57,15 +63,15 @@ function measureFit(stage: HTMLElement, card: HTMLElement, currentShift: number)
   const right = document.documentElement.clientWidth - GAP;
   const room = bottom - top;
 
-  const meadow = halfStep(Math.min(
+  const meadow = snapScale(Math.min(
     MAX_SCALE,
     room / HEIGHT,
     (room - box.height) / MEADOW_Y,
     (box.left - GAP) / MEADOW_X,
     (right - box.left) / (WIDTH - MEADOW_X),
   ));
-  const beside = halfStep(Math.min(MAX_SCALE, room / HEIGHT, (box.left - 2 * GAP) / WIDTH));
-  // halfStep never goes below 0.5x, so a short window can leave the meadow
+  const beside = snapScale(Math.min(MAX_SCALE, room / HEIGHT, (box.left - 2 * GAP) / WIDTH));
+  // snapScale never goes below 0.5x, so a short window can leave the meadow
   // layout too tall for the room; then the scene goes beside the card if it fits there.
   const meadowFits = HEIGHT * meadow <= room && MEADOW_Y * meadow + box.height <= room;
   const besideFits = HEIGHT * beside <= room && WIDTH * beside <= box.left - 2 * GAP;
