@@ -3,9 +3,7 @@
   "version": "4.0.0",
   "private": true,
   "scripts": {
-    "predev": "node ./scripts/ensure-workspace-packages.mjs",
     "dev": "next dev --port 3002",
-    "prebuild": "node ./scripts/ensure-squish-core.mjs",
     "build": "next build",
     "start": "next start --port 3002",
     "lint": "tsc --noEmit"

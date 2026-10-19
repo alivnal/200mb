@@ -15,8 +15,8 @@ v4/
 └── apps/web/          # Next.js browser app (v4) — trim support, port 3002
 ```
 
-**Canonical shared source** lives in `v3/apps/web/lib/squish-core/` and `v3/apps/web/lib/i18n/`.
-The v4 predev script (`ensure-workspace-packages.mjs`) syncs these into `v4/apps/web/lib/` automatically on every `npm run dev`.
+**v4 owns its shared code** in `v4/apps/web/lib/squish-core/` and `v4/apps/web/lib/i18n/`; nothing
+syncs into these folders. The v3 web app keeps its own older copies in `v3/apps/web/lib/`.
 
 ## Quick start
 
@@ -98,4 +98,4 @@ the repository root and fails with `NEXT_NO_ROUTES_MANIFEST`.
 ## Notes
 
 - Legacy pre-v3 files are documented in [LEGACY.md](LEGACY.md).
-- When modifying shared types/functions (squish-core, i18n), always edit the **v3 source** (`v3/apps/web/lib/`). The v4 sync script will pick up changes automatically.
+- When modifying shared types/functions (squish-core, i18n), edit the **v4 source** (`v4/apps/web/lib/`).
