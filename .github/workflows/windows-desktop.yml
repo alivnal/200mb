@@ -1,0 +1,57 @@
+name: Windows desktop
+
+# Builds the Windows installer and portable app on a Windows runner, installs
+# the app silently, and drives it with v3/apps/desktop/scripts/windows-smoke.mjs.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      # electron-builder downloads its own Electron for packaging.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build installer and portable app
+        run: npm run dist:win -w @squish/desktop
+
+      - name: Install silently
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem v3/apps/desktop/release/*-setup.exe | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList '/S' -Wait
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter Squik.exe | Select-Object -First 1
+          if (-not $exe) { throw 'Squik.exe was not installed under %LOCALAPPDATA%\Programs.' }
+          Write-Output "Installed at $($exe.FullName)"
+          "SQUIK_EXE=$($exe.FullName)" >> $env:GITHUB_ENV
+
+      - name: Smoke test the installed app
+        shell: pwsh
+        run: |
+          npm install --no-save playwright-core@1.52.0
+          node v3/apps/desktop/scripts/windows-smoke.mjs "$env:SQUIK_EXE" smoke-out
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-results
+          path: smoke-out/
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: squik-windows
+          path: |
+            v3/apps/desktop/release/*-setup.exe
+            v3/apps/desktop/release/*-portable.exe
+          if-no-files-found: ignore
