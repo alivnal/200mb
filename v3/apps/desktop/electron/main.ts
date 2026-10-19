@@ -1,8 +1,8 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, net, powerSaveBlocker, protocol, session, shell } from 'electron';
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, powerSaveBlocker, protocol, shell } from 'electron';
+import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { existsSync } from 'node:fs';
-import { mkdir, rm, stat } from 'node:fs/promises';
+import { copyFile, mkdir, rm, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { CompressionCancelledError } from '../../../../v4/apps/web/lib/squish-core';
 import { FfmpegJobs, type JobOutput } from './jobs';
@@ -259,17 +259,41 @@ app.whenReady().then(() => {
     jobs.cancel();
   });
 
-  ipcMain.handle('output:share', async (event, outputUrl: unknown, target: unknown) => {
-    assertTrustedSender(event);
+  /** The finished job behind a result URL the page was given. */
+  const outputForUrl = (outputUrl: unknown): { jobId: string; output: JobOutput } => {
     if (typeof outputUrl !== 'string' || !outputUrl.startsWith(`${ORIGIN}${OUTPUT_PREFIX}`)) {
       throw new Error('Unknown result.');
-    }
-    if (target !== 'drive' && target !== 'mail' && target !== 'slack' && target !== 'more') {
-      throw new Error('Unknown share target.');
     }
     const jobId = outputUrl.slice(`${ORIGIN}${OUTPUT_PREFIX}`.length).split('/')[0];
     const output = outputs.get(jobId);
     if (!output) throw new Error('This result is no longer available. Run the job again.');
+    return { jobId, output };
+  };
+
+  // The result screen asks where to keep the file as soon as a job ends: a Save
+  // sheet in Downloads, then the page offers Show in Finder for the saved copy.
+  ipcMain.handle('output:save', async (event, outputUrl: unknown) => {
+    assertTrustedSender(event);
+    const { output } = outputForUrl(outputUrl);
+    const window = BrowserWindow.fromWebContents(event.sender)!;
+    const { canceled, filePath } = await dialog.showSaveDialog(window, {
+      defaultPath: join(app.getPath('downloads'), output.filename),
+      filters: [{ name: 'Video', extensions: [extname(output.filename).slice(1) || 'mp4'] }],
+    });
+    if (canceled || !filePath) return null;
+    // A result that needed no encode is the user's own file; saving it over itself is a no-op.
+    if (resolve(filePath) !== resolve(output.path)) await copyFile(output.path, filePath);
+    savedPaths.add(filePath);
+    app.dock?.downloadFinished(filePath);
+    return filePath;
+  });
+
+  ipcMain.handle('output:share', async (event, outputUrl: unknown, target: unknown) => {
+    assertTrustedSender(event);
+    if (target !== 'drive' && target !== 'mail' && target !== 'slack' && target !== 'more') {
+      throw new Error('Unknown share target.');
+    }
+    const { jobId, output } = outputForUrl(outputUrl);
     const file = await shareableCopy(output.path, output.filename, join(outputDirectory(), 'share', jobId));
     return shareFile(file, output.filename, target, mainWindow);
   });
@@ -287,23 +311,6 @@ app.whenReady().then(() => {
   });
 
   installApplicationMenu(() => mainWindow, Boolean(devServerUrl));
-
-  // The result screen's download link: offer a Save dialog in Downloads, then
-  // let the page offer Show in Finder for the saved file.
-  session.defaultSession.on('will-download', (_event, item) => {
-    if (!item.getURL().startsWith(`${ORIGIN}${OUTPUT_PREFIX}`)) return;
-    item.setSaveDialogOptions({
-      defaultPath: join(app.getPath('downloads'), item.getFilename()),
-      filters: [{ name: 'Video', extensions: [item.getFilename().split('.').pop() ?? 'mp4'] }],
-    });
-    item.once('done', (_doneEvent, state) => {
-      if (state !== 'completed') return;
-      const savePath = item.getSavePath();
-      savedPaths.add(savePath);
-      app.dock?.downloadFinished(savePath);
-      mainWindow?.webContents.send('output:saved', savePath);
-    });
-  });
 
   createWindow();
   app.on('activate', () => {

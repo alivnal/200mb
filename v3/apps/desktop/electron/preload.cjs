@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld('squikDesktop', {
   runJob: (jobId, job) => ipcRenderer.invoke('video:run-job', jobId, job),
   cancelJob: () => ipcRenderer.invoke('video:cancel'),
   onJobProgress: (callback) => subscribe('video:progress', callback),
-  onOutputSaved: (callback) => subscribe('output:saved', callback),
+  saveOutput: (outputUrl) => ipcRenderer.invoke('output:save', outputUrl),
   revealOutput: (path) => ipcRenderer.invoke('output:reveal', path),
   shareOutput: (outputUrl, target) => ipcRenderer.invoke('output:share', outputUrl, target),
   onFullScreenChange: (callback) => subscribe('window:fullscreen', callback),

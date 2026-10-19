@@ -14,8 +14,8 @@ export type ShareTarget = 'drive' | 'mail' | 'slack' | 'more';
  * the desktop build swaps this module for one that talks to the app.
  */
 export interface NativeOutputActions {
-  /** Calls back with the path each time the user saves the result; returns an unsubscribe. */
-  onSaved(callback: (path: string) => void): () => void;
+  /** Asks where to save the result and saves it; the saved path, or null if cancelled. */
+  save(outputUrl: string): Promise<string | null>;
   reveal(path: string): void;
   /**
    * Hands the result to another app. 'revealed' means the host could only open

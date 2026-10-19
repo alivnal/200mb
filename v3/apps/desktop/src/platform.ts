@@ -11,7 +11,7 @@ export const ENCODER_LABEL = 'FFmpeg (native)';
 
 export const nativeOutput: NativeOutputActions | null = window.squikDesktop
   ? {
-      onSaved: (callback) => window.squikDesktop!.onOutputSaved(callback),
+      save: (outputUrl) => window.squikDesktop!.saveOutput(outputUrl),
       reveal: (path) => void window.squikDesktop!.revealOutput(path),
       share: (outputUrl, target) => window.squikDesktop!.shareOutput(outputUrl, target),
     }

@@ -37,7 +37,8 @@ export interface DesktopApi {
   runJob(jobId: string, job: NativeJob): Promise<NativeJobResult>;
   cancelJob(): Promise<void>;
   onJobProgress(callback: (progress: NativeJobProgress) => void): () => void;
-  onOutputSaved(callback: (path: string) => void): () => void;
+  /** Asks where to save the result and copies it there; null when the user cancels. */
+  saveOutput(outputUrl: string): Promise<string | null>;
   revealOutput(path: string): Promise<void>;
   shareOutput(outputUrl: string, target: ShareTarget): Promise<ShareResult>;
   onFullScreenChange(callback: (fullScreen: boolean) => void): () => void;
