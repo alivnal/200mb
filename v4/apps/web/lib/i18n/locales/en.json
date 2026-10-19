@@ -123,6 +123,15 @@
     "compressAnother": "Compress Another",
     "showInFolder": "Show in Folder"
   },
+  "share": {
+    "title": "Share",
+    "drive": "Google Drive",
+    "mail": "Mail",
+    "slack": "Slack",
+    "more": "More…",
+    "dragHint": "The file is shown in its folder. Drag it into the page that just opened.",
+    "failed": "Could not share the file: {{message}}"
+  },
   "footer": {
     "text": "Made with <heart/> by <channel>Squik</channel>"
   }

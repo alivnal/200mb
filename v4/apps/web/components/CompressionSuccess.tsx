@@ -5,12 +5,14 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatBytes, type WebCompressionResult } from '@/lib/squish-core';
 import { formatElapsed } from '@/lib/compress-progress';
+import { nativeOutput } from '@/lib/platform';
 import MaterialIcon from './MaterialIcon';
 import PanelMascot from './mascot/PanelMascot';
+import ShareTargets from './ShareTargets';
 import { PanelBody, ScreenPanel } from './ScreenPanel';
 
 interface CompressionSuccessProps {
@@ -26,6 +28,9 @@ function savedPercent(original: number, compressed: number): number {
 export default function CompressionSuccess({ result, onReset }: CompressionSuccessProps) {
   const { t } = useTranslation();
   const percent = savedPercent(result.originalSize, result.compressedSize);
+  // Desktop only: once the file is saved, offer to show it where it landed.
+  const [savedPath, setSavedPath] = useState<string | null>(null);
+  useEffect(() => nativeOutput?.onSaved(setSavedPath), []);
 
   const description = result.encoderLabel
     ? t('success.descriptionWithEncoder', { encoder: result.encoderLabel })
@@ -90,11 +95,23 @@ export default function CompressionSuccess({ result, onReset }: CompressionSucce
               <MaterialIcon name="download" size={18} />
               {t('success.downloadFile')}
             </a>
+            {savedPath && nativeOutput && (
+              <button
+                type="button"
+                onClick={() => nativeOutput?.reveal(savedPath)}
+                className="pixel-btn pixel-btn-secondary"
+              >
+                <MaterialIcon name="folder_open" size={18} />
+                {t('success.showInFolder')}
+              </button>
+            )}
             <button type="button" onClick={onReset} className="pixel-btn pixel-btn-secondary">
               <MaterialIcon name="add_circle" size={18} />
               {t('success.compressAnother')}
             </button>
           </div>
+
+          {nativeOutput && <ShareTargets outputUrl={result.outputUrl} actions={nativeOutput} />}
         </PanelBody>
       </ScreenPanel>
     </div>

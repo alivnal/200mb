@@ -121,6 +121,15 @@
     "compressAnother": "Başka Video Sıkıştır",
     "showInFolder": "Klasörde Göster"
   },
+  "share": {
+    "title": "Paylaş",
+    "drive": "Google Drive",
+    "mail": "E-posta",
+    "slack": "Slack",
+    "more": "Diğer…",
+    "dragHint": "Dosya klasöründe gösterildi. Açılan sayfaya sürükleyip bırakın.",
+    "failed": "Dosya paylaşılamadı: {{message}}"
+  },
   "footer": {
     "text": "<channel>Squik</channel> ile <heart/> yapıldı"
   }

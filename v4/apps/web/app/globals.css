@@ -1262,6 +1262,72 @@ body {
   }
 }
 
+/* Desktop result screen: hand the video to another app. */
+.share-targets {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-space-3, 0.75rem);
+  margin-top: var(--spacing-space-6, 1.5rem);
+  padding-top: var(--spacing-space-6, 1.5rem);
+  border-top: 1px solid var(--color-border);
+}
+
+.share-targets-label {
+  font-size: var(--text-body-sm, 0.875rem);
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.share-targets-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.share-target {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 0.95rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.625rem;
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  font-size: var(--text-body-sm, 0.875rem);
+  font-weight: 600;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 120ms ease;
+}
+
+.share-target:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-tint);
+}
+
+.share-target:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.share-target:disabled {
+  opacity: 0.55;
+}
+
+.share-target[aria-busy="true"] {
+  opacity: 1;
+  border-color: var(--color-accent);
+}
+
+.share-targets-note {
+  max-width: 26rem;
+  margin: 0;
+  font-size: var(--text-body-sm, 0.875rem);
+  line-height: 1.4;
+  color: var(--color-muted);
+  text-align: center;
+}
+
 @keyframes fade-in-up {
   from {
     opacity: 0;
