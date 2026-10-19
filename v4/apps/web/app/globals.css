@@ -217,14 +217,6 @@ body {
   flex-direction: column;
 }
 
-.app-panel-body-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
 .app-panel-header {
   padding: clamp(0.875rem, 3vw, 1.25rem) clamp(0.875rem, 3vw, 1.5rem) clamp(0.625rem, 2vw, 1rem);
   text-align: center;
@@ -407,17 +399,6 @@ body {
 @media screen and (min-width: 520px) {
   .drop-zone {
     padding: 2.5rem 2rem;
-  }
-}
-
-.drop-zone-compact {
-  padding: 1rem;
-  min-height: 8rem;
-}
-
-@media screen and (min-width: 520px) {
-  .drop-zone-compact {
-    padding: 1.5rem 1.25rem;
   }
 }
 
@@ -784,32 +765,6 @@ body {
   margin: 0;
 }
 
-.selected-video {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  min-height: 4.75rem;
-  padding: 0.875rem 1rem;
-  border-radius: 6px;
-  background: var(--color-gray-100);
-}
-
-.selected-video-name {
-  overflow: hidden;
-  margin: 0;
-  color: var(--color-ink);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.selected-video-meta {
-  margin: 0.25rem 0 0;
-  color: var(--color-muted);
-  font-size: 0.875rem;
-}
-
 .text-action {
   flex: none;
   padding: 0.625rem 0.75rem;
@@ -827,68 +782,29 @@ body {
   color: var(--color-accent-hover);
 }
 
-.trim-controls {
-  display: flex;
-  min-width: 0;
-  min-height: 0;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.trim-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: var(--color-ink);
-  font-size: 0.9375rem;
-  font-weight: 650;
-}
-
-.trim-hint {
-  margin: 0 0 0.75rem;
-  color: var(--color-muted);
-  font-size: 0.875rem;
-}
-
-.trim-input {
-  width: 100%;
-  min-height: 6rem;
-  max-height: 12rem;
-  padding: 0.75rem;
-  resize: vertical;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font: inherit;
-  font-size: 0.9375rem;
-}
-
-.trim-input:focus-visible {
-  outline: 3px solid var(--color-accent);
-  outline-offset: 2px;
-}
-
-.trim-parsed {
-  margin: 0.625rem 0 0;
-  color: var(--color-accent);
-  font-size: 0.875rem;
-}
-
-.tool-action-row {
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* Merge bento tray. It takes the drop zone's place minus the footer row, so
-   adding clips never changes the card's height (and the hero's layout). */
-.merge-bento {
+/* Bento trays for merge and trim. Each takes the drop zone's place minus the
+   footer row, so the card keeps the compress card's height in every mode
+   (and the hero keeps its layout). */
+.merge-bento,
+.trim-bento {
   --bento-height: 11.25rem;
+  gap: 0.5rem;
+  height: var(--bento-height);
+}
+
+.bento-tile {
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--color-gray-100);
+  animation: bento-rise 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.merge-bento {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-auto-rows: calc((var(--bento-height) - 0.5rem) / 2);
   align-content: start;
-  gap: 0.5rem;
-  height: var(--bento-height);
   margin: 0;
   padding: 0;
   overflow-y: auto;
@@ -901,15 +817,10 @@ body {
 
 .merge-tile {
   display: flex;
-  min-width: 0;
   flex-direction: column;
   justify-content: space-between;
   gap: 0.375rem;
   padding: 0.625rem 0.5rem 0.375rem 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: var(--color-gray-100);
-  animation: bento-rise 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
 .merge-tile.is-lead {
@@ -1022,22 +933,109 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .merge-tile {
+  .bento-tile {
     animation: none;
   }
 }
 
-.merge-footer {
+.trim-bento {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: 3.5rem minmax(0, 1fr);
+}
+
+.trim-file {
+  display: flex;
+  grid-column: span 2;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0 0.25rem 0 0.875rem;
+  border-color: color-mix(in srgb, var(--color-accent) 28%, transparent);
+  background: var(--color-accent-tint);
+}
+
+.trim-bento.is-dragging .trim-file {
+  border-color: var(--color-accent);
+}
+
+.trim-file-name {
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  color: var(--color-ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trim-length {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.25rem 0.875rem;
+}
+
+.trim-length-value {
+  color: var(--color-ink);
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.trim-caption {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.trim-ranges {
+  display: flex;
+  min-height: 0;
+  grid-column: 1 / -1;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.5rem 0.625rem 0.625rem 0.875rem;
+}
+
+.trim-input {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  padding: 0.5rem 0.625rem;
+  resize: none;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.trim-input:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.tray-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
 }
 
-.merge-summary {
+.tray-summary {
   margin: 0;
   color: var(--color-muted);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.tray-summary.is-ready {
+  color: var(--color-accent);
+  font-weight: 600;
 }
 .clip-control {
   display: inline-flex;
@@ -1398,12 +1396,13 @@ body {
     padding: 1.5rem 1rem;
   }
 
-  .drop-zone.drop-zone-compact {
-    min-height: 8rem;
+  .merge-bento,
+  .trim-bento {
+    --bento-height: 9.25rem;
   }
 
-  .merge-bento {
-    --bento-height: 9.25rem;
+  .trim-bento {
+    grid-template-rows: 3rem minmax(0, 1fr);
   }
 
   .success-stats {

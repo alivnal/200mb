@@ -323,26 +323,49 @@ export default function VideoSelector({
           </div>
 
           {mode === 'trim' && trimVideo ? (
-            <div className="selected-video">
-              <MaterialIcon name="movie" size={20} className="text-accent shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="selected-video-name">{trimVideo.name}</p>
-                {trimProbing ? (
-                  <p className="selected-video-meta">{t('phase.preparing')}</p>
-                ) : trimDurationSec != null ? (
-                  <p className="selected-video-meta">
-                    {t('trim.duration', { duration: formatTimestamp(trimDurationSec) })}
-                  </p>
-                ) : null}
+            // Same tray as merge, so the card keeps its height: the file and
+            // its length on top, the ranges to delete filling the rest.
+            <div
+              className={`trim-bento ${isDragActive ? 'is-dragging' : ''}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <div className="bento-tile trim-file">
+                <MaterialIcon name="movie" size={20} className="text-accent shrink-0" />
+                <p className="trim-file-name" title={trimVideo.name}>{trimVideo.name}</p>
+                <button
+                  type="button"
+                  disabled={disabled || trimProbing}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-action"
+                >
+                  {t('trim.change')}
+                </button>
               </div>
-              <button
-                type="button"
-                disabled={disabled || trimProbing}
-                onClick={() => fileInputRef.current?.click()}
-                className="text-action"
-              >
-                {t('landing.browseSingle')}
-              </button>
+              <div className="bento-tile trim-length">
+                <span className="trim-caption">{t('trim.lengthLabel')}</span>
+                <span className="trim-length-value">
+                  {trimProbing || trimDurationSec == null ? '…' : formatTimestamp(trimDurationSec)}
+                </span>
+              </div>
+              <div className="bento-tile trim-ranges">
+                <label htmlFor="trim-ranges" className="trim-caption">
+                  {t('trim.rangesLabel')}
+                </label>
+                <textarea
+                  id="trim-ranges"
+                  value={rangeText}
+                  aria-describedby="trim-ranges-hint"
+                  disabled={disabled || trimProbing}
+                  onChange={(e) => {
+                    setRangeText(e.target.value);
+                    setError(null);
+                  }}
+                  placeholder={t('trim.rangesPlaceholder')}
+                  className="trim-input"
+                />
+              </div>
             </div>
           ) : mode === 'merge' && clips.length > 0 ? (
             // Bento tray in the drop zone's place, so the card keeps its height:
@@ -360,7 +383,7 @@ export default function VideoSelector({
                 <li
                   key={clip.id}
                   data-flip-id={clip.id}
-                  className={`merge-tile ${index === 0 ? 'is-lead' : ''}`}
+                  className={`bento-tile merge-tile ${index === 0 ? 'is-lead' : ''}`}
                   style={{ animationDelay: `${Math.min(index, 6) * 45}ms` }}
                 >
                   <p className="merge-tile-name" title={clip.file.name}>
@@ -401,7 +424,7 @@ export default function VideoSelector({
                   </div>
                 </li>
               ))}
-              <li data-flip-id="merge-add" className="merge-tile merge-tile-add">
+              <li data-flip-id="merge-add" className="bento-tile merge-tile-add">
                 <button type="button" disabled={disabled} onClick={handleZoneClick}>
                   <MaterialIcon name="add" size={22} />
                   <span>{t('merge.addMore')}</span>
@@ -418,11 +441,9 @@ export default function VideoSelector({
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={handleZoneClick}
-                className={`drop-zone ${isDragActive ? 'is-dragging' : ''} ${
-                  mode === 'trim' ? 'drop-zone-compact' : ''
-                }`}
+                className={`drop-zone ${isDragActive ? 'is-dragging' : ''}`}
               >
-                <CompressOIcon name="addMedia" size={mode === 'trim' ? 42 : 52} className="text-accent" />
+                <CompressOIcon name="addMedia" size={52} className="text-accent" />
                 <span className="drop-zone-title">
                   {t('landing.dragDrop')}
                 </span>
@@ -434,59 +455,31 @@ export default function VideoSelector({
             </div>
           )}
 
-          {mode === 'trim' ? (
-            <div className="trim-controls">
-              <div className="app-panel-body-scroll space-y-3 text-left pr-0.5">
-                <div>
-                  <label htmlFor="trim-ranges" className="trim-label">
-                    {t('trim.rangesLabel')}
-                  </label>
-                  <p className="trim-hint">{t('trim.rangesHint')}</p>
-                  <textarea
-                    id="trim-ranges"
-                    rows={3}
-                    value={rangeText}
-                    disabled={disabled || !trimVideo || trimProbing}
-                    onChange={(e) => {
-                      setRangeText(e.target.value);
-                      setError(null);
-                    }}
-                    placeholder={t('trim.rangesPlaceholder')}
-                    className="trim-input"
-                  />
-                  {parsedRangeCount > 0 && (
-                    <p className="trim-parsed">
-                      {t('trim.parsedRanges', { count: parsedRangeCount })}
-                    </p>
-                  )}
-                </div>
-
-                {error && (
-                  <div className="inline-error">
-                    <PanelMascot variant="error" size="sm" className="shrink-0" />
-                    <span className="text-left">{error}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="tool-action-row">
-                <div className="flex justify-center">
-                  <button
-                    type="button"
-                    disabled={disabled || !trimVideo || trimProbing || trimDurationSec == null}
-                    onClick={handleTrim}
-                    className="pixel-btn"
-                  >
-                    {t('common.trimAndCompress')}
-                  </button>
-                </div>
-              </div>
+          {mode === 'trim' && trimVideo && (
+            <div className="tray-footer">
+              {parsedRangeCount > 0 ? (
+                <p id="trim-ranges-hint" className="tray-summary is-ready">
+                  {t('trim.parsedRanges', { count: parsedRangeCount })}
+                </p>
+              ) : (
+                <p id="trim-ranges-hint" className="tray-summary">
+                  {t('trim.rangesHint')}
+                </p>
+              )}
+              <button
+                type="button"
+                disabled={disabled || trimProbing || trimDurationSec == null}
+                onClick={handleTrim}
+                className="pixel-btn"
+              >
+                {t('common.trimAndCompress')}
+              </button>
             </div>
-          ) : null}
+          )}
 
           {mode === 'merge' && clips.length > 0 && (
-            <div className="merge-footer">
-              <p className="merge-summary">
+            <div className="tray-footer">
+              <p className="tray-summary">
                 {t('merge.summary', {
                   count: clips.length,
                   size: formatBytes(clips.reduce((sum, clip) => sum + clip.file.size, 0), 1),
@@ -503,7 +496,7 @@ export default function VideoSelector({
             </div>
           )}
 
-          {error && mode !== 'trim' && (
+          {error && (
             <div className="inline-error">
               <PanelMascot variant="error" size="sm" className="shrink-0" />
               <span className="text-left">{error}</span>

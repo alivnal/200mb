@@ -38,11 +38,12 @@
   },
   "trim": {
     "pickVideoFirst": "Pick a video first.",
-    "duration": "Duration: {{duration}}",
     "rangesLabel": "Sections to delete",
-    "rangesHint": "Enter time ranges to remove (e.g. 00:30 - 01:15). Everything else will be kept.",
+    "rangesHint": "e.g. 00:30 - 01:15. Everything else is kept.",
     "rangesPlaceholder": "00:30 - 01:15\n02:00 - 03:30",
-    "parsedRanges": "{{count}} range(s) ready"
+    "parsedRanges": "{{count}} range(s) ready",
+    "change": "Change",
+    "lengthLabel": "Length"
   },
   "merge": {
     "clips": "Clips to merge",

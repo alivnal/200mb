@@ -38,11 +38,12 @@
   },
   "trim": {
     "pickVideoFirst": "Önce bir video seçin.",
-    "duration": "Süre: {{duration}}",
     "rangesLabel": "Silinecek bölümler",
-    "rangesHint": "Kaldırılacak zaman aralıklarını girin (örn. 00:30 - 01:15). Geri kalan her şey korunur.",
+    "rangesHint": "Örn. 00:30 - 01:15. Geri kalanı korunur.",
     "rangesPlaceholder": "00:30 - 01:15\n02:00 - 03:30",
-    "parsedRanges": "{{count}} aralık hazır"
+    "parsedRanges": "{{count}} aralık hazır",
+    "change": "Değiştir",
+    "lengthLabel": "Süre"
   },
   "merge": {
     "clips": "Birleştirilecek klipler",
