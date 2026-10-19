@@ -167,3 +167,60 @@ html:is([data-platform="mac"], [data-platform="win"]) .tool-layout {
     padding-block: 0.75rem;
   }
 }
+
+/* Narrow windows (a small screen at high display scaling) keep the scene
+   beside the card instead of stacking it on top, where a short window leaves
+   it no room: the card narrows a little and SquikHero scales the scene down. */
+@media (max-width: 900px) {
+  html:is([data-platform="mac"], [data-platform="win"]) .tool-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(min(30rem, 62%), 1.14fr);
+    align-items: end;
+    align-content: normal;
+    gap: 2rem;
+    max-width: none;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .squik-stage {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: start;
+    align-self: end;
+    width: 0;
+    height: 0;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .squik-hero {
+    position: absolute;
+    margin: 0;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .squik-hero:not([data-ready]) {
+    visibility: hidden;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .tool-ui {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
+/* The tightest windows (a 1024x768 screen at 150%, 1366x768 at 175%): a
+   slimmer header, footer and drop zone, and the result and progress screens
+   keep only their essentials (numbers, actions, progress). */
+@media (max-height: 500px) {
+  html:is([data-platform="mac"], [data-platform="win"]) .app-header {
+    min-height: 3.25rem;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .app-site-footer {
+    padding-block: 0.25rem 0.5rem;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .drop-zone {
+    min-height: 8rem;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) :is(.success-description, .status-times) {
+    display: none;
+  }
+}

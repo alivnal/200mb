@@ -71,7 +71,7 @@ export default function CompressionSuccess({ result, onReset }: CompressionSucce
             <span className="text-success">{t('success.titleAccent')}</span>
             {t('success.titleAfter')}
           </h1>
-          <p className="text-body-sm leading-5 text-muted mb-space-6 max-w-md mx-auto">
+          <p className="success-description text-body-sm leading-5 text-muted mb-space-6 max-w-md mx-auto">
             {description}
             {result.clipCount && result.clipCount > 1
               ? ` ${t('success.mergedFrom', { count: result.clipCount })}`

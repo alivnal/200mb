@@ -92,7 +92,7 @@ export default function CompressionStatus({
               {phaseTitle}
             </p>
 
-            <div className="mt-space-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-body-sm text-muted">
+            <div className="status-times mt-space-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-body-sm text-muted">
               <span className="inline-flex items-center gap-1">
                 <MaterialIcon name="timer" size={16} />
                 {t('status.elapsed', { time: formatElapsed(elapsedMs) })}
