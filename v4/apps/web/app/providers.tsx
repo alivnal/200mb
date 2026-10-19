@@ -7,7 +7,10 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { I18nProvider } from '@squish/i18n/react';
+import { istanbulDaylight } from '@/lib/daylight';
 
+// 'system' is the default when the visitor has not picked a theme: it follows
+// day and night in Istanbul (light from sunrise to sunset), not the OS setting.
 type Theme = 'light' | 'dark' | 'system';
 
 interface ThemeContextValue {
@@ -31,45 +34,52 @@ function getStoredTheme(): Theme {
   return (localStorage.getItem('theme') as Theme) ?? 'system';
 }
 
-function getSystemTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
+// Longest wait between checks, so a laptop waking from sleep catches up.
+const MAX_RECHECK_MS = 60 * 60 * 1000;
 
 function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('system');
+  // null until the stored choice is read after hydration.
+  const [theme, setThemeState] = useState<Theme | null>(null);
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
 
   useEffect(() => {
-    const stored = getStoredTheme();
-    setThemeState(stored);
-
-    const resolved = stored === 'system' ? getSystemTheme() : stored;
-    setResolvedTheme(resolved);
-    document.documentElement.setAttribute('data-theme', resolved);
-
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
-      if (getStoredTheme() === 'system') {
-        const sys = getSystemTheme();
-        setResolvedTheme(sys);
-        document.documentElement.setAttribute('data-theme', sys);
-      }
-    };
-    mq.addEventListener('change', handleChange);
-    return () => mq.removeEventListener('change', handleChange);
+    setThemeState(getStoredTheme());
   }, []);
 
+  useEffect(() => {
+    if (theme === null) return;
+    const apply = (next: 'light' | 'dark') => {
+      setResolvedTheme(next);
+      document.documentElement.setAttribute('data-theme', next);
+    };
+    if (theme !== 'system') {
+      apply(theme);
+      return;
+    }
+
+    // Follow Istanbul's sunrise and sunset, switching at the next one.
+    let timer = 0;
+    const sync = () => {
+      const { theme: auto, nextChange } = istanbulDaylight(Date.now());
+      apply(auto);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(sync, Math.min(nextChange - Date.now() + 1000, MAX_RECHECK_MS));
+    };
+    sync();
+    document.addEventListener('visibilitychange', sync);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', sync);
+    };
+  }, [theme]);
+
   const setTheme = (next: Theme) => {
-    setThemeState(next);
     localStorage.setItem('theme', next);
-    const resolved = next === 'system' ? getSystemTheme() : next;
-    setResolvedTheme(resolved);
-    document.documentElement.setAttribute('data-theme', resolved);
+    setThemeState(next);
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme: theme ?? 'system', resolvedTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

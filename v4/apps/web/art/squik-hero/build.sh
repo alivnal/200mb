@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Renders the day and night Squik hero with Aseprite and writes the animated
-# WebPs and reduced-motion stills into public/hero.
+# WebPs, reduced-motion stills, and the sun and moon sprites into public/hero.
 # Usage: ./build.sh   (set ASEPRITE if Aseprite is not in the default place)
 set -euo pipefail
 
@@ -18,3 +18,6 @@ for variant in day night; do
   "$ASEPRITE" -b "$sprite" --save-as "$PUBLIC/squik-hero-$variant.webp"
   "$ASEPRITE" -b --frame-range 0,0 "$sprite" --save-as "$PUBLIC/squik-hero-$variant-still.png"
 done
+
+# Sun and moon, layered behind the scene by the site.
+"$ASEPRITE" -b --script-param out="$PUBLIC" --script "$HERE/celestial.lua"

@@ -871,21 +871,16 @@ end
 -- Drawn on its own bottom layer, so the diorama covers whatever falls behind
 -- it. Every motion repeats within the loop.
 
+-- The sun and moon are separate sprites (celestial.lua) that the site moves
+-- behind the scene when the theme changes; the sky keeps a clear patch for
+-- them around this point.
 local SKY = {
-  sun = hex("#fff1b0"), sunEdge = hex("#ffd166"), ray = hex("#ffc94d"),
   cloud = hex("#dceaf6"), cloudShade = hex("#c3d8ea"), bird = hex("#3d4b5c"),
-  moon = hex("#f4f0d6"), moonShade = hex("#d9d2b0"), halo = hex("#22304f"),
   star = hex("#eef2ff"), starDim = hex("#8fa3cc"),
 }
--- Low enough that the 4x layout, which starts slightly above the viewport,
--- keeps the sun and moon clear of the site header.
 local SUN_X, SUN_Y = 280, 40
 
 local function skyPx(img, x, y, c) if x >= 0 and y >= 0 and x < W and y < H then img:drawPixel(x, y, c) end end
-
-local function disc(img, cx, cy, r, c)
-  for y = -r, r do for x = -r, r do if x * x + y * y <= r * r + r then skyPx(img, cx + x, cy + y, c) end end end
-end
 
 local CLOUD_PARTS = { { 0, 0, 7, 2.6 }, { -5, 1, 4.5, 2 }, { 5, 1, 5, 2 }, { 1, -2, 3.5, 2 } }
 local function cloud(img, cx, cy)
@@ -902,18 +897,6 @@ end
 local function drawSky(img, t)
   local wave = math.sin(2 * math.pi * t / L)
   if not NIGHT then
-    disc(img, SUN_X, SUN_Y, 9, SKY.sunEdge)
-    disc(img, SUN_X, SUN_Y, 7, SKY.sun)
-    -- Rays pulse between the diagonals and the axes every 10 frames.
-    local diag = (t // 10) % 2 == 0
-    for k = 0, 7 do
-      if (k % 2 == 1) == diag then
-        local a = k * math.pi / 4
-        for rr = 12, 14 do
-          skyPx(img, SUN_X + math.floor(math.cos(a) * rr + 0.5), SUN_Y + math.floor(math.sin(a) * rr + 0.5), SKY.ray)
-        end
-      end
-    end
     cloud(img, 128 + math.floor(4 * wave + 0.5), 36)
     cloud(img, 54 + math.floor(-3 * wave + 0.5), 42)
     cloud(img, 300 + math.floor(-2 * wave + 0.5), 62)
@@ -932,25 +915,13 @@ local function drawSky(img, t)
       local x, y = math.floor(hash(n, 1, 101) * W), math.floor(hash(n, 2, 102) * 110)
       local ph = math.floor(hash(n, 3, 103) * L)
       local lit = (t + ph) % 30 < 24
-      if n % 9 == 0 then
+      if (x - SUN_X) ^ 2 + (y - SUN_Y) ^ 2 < 18 * 18 then
+        -- Keep the moon's patch of sky clear.
+      elseif n % 9 == 0 then
         skyPx(img, x, y, lit and SKY.star or SKY.starDim)
         if lit then for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do skyPx(img, x + d[1], y + d[2], SKY.starDim) end end
       elseif lit then
         skyPx(img, x, y, (n % 3 == 0) and SKY.star or SKY.starDim)
-      end
-    end
-    -- Crescent moon with a dithered halo.
-    for y = -13, 13 do
-      for x = -13, 13 do
-        local d = x * x + y * y
-        if d > 90 and d <= 160 and (x + y) % 2 == 0 then skyPx(img, SUN_X + x, SUN_Y + y, SKY.halo) end
-      end
-    end
-    for y = -8, 8 do
-      for x = -8, 8 do
-        if x * x + y * y <= 72 and (x - 4) ^ 2 + (y + 2) ^ 2 > 50 then
-          skyPx(img, SUN_X + x, SUN_Y + y, (x + y > 4) and SKY.moonShade or SKY.moon)
-        end
       end
     end
     -- One shooting star per loop.

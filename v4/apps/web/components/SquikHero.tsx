@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTheme } from '@/app/providers';
 import { useStillness } from './iso/react/live';
 
@@ -17,6 +17,11 @@ const MEADOW_Y = 118;
 const GAP = 8;
 const MAX_SCALE = 4;
 const SIDE_BY_SIDE = '(min-width: 901px)';
+const SCENES = ['day', 'night'] as const;
+type Scene = (typeof SCENES)[number];
+
+const sceneSrc = (scene: Scene, still: boolean) =>
+  still ? `/hero/squik-hero-${scene}-still.png` : `/hero/squik-hero-${scene}.webp`;
 
 type Fit = { scale: number; left: number; top: number; cardShift: number };
 
@@ -80,6 +85,19 @@ export default function SquikHero() {
   const stageRef = useRef<HTMLDivElement>(null);
   const shiftRef = useRef(0);
   const [fit, setFit] = useState<Fit | null>(null);
+  const [animate, setAnimate] = useState(false);
+  const [loadBoth, setLoadBoth] = useState(false);
+
+  // The theme settles just after hydration; only animate changes after that,
+  // so a night visit does not open with a sunset. The scene not on show is
+  // fetched then too, ready for the first switch.
+  useEffect(() => {
+    const settle = window.setTimeout(() => {
+      setAnimate(true);
+      setLoadBoth(true);
+    }, 1000);
+    return () => window.clearTimeout(settle);
+  }, []);
 
   useLayoutEffect(() => {
     const stage = stageRef.current;
@@ -125,17 +143,32 @@ export default function SquikHero() {
     // Side by side, the stage is a zero-size anchor in the card's grid cell;
     // stacked, it is a normal row above the card.
     <div ref={stageRef} className="squik-stage" aria-hidden="true">
-      <img
+      <div
         className="squik-hero"
-        src={still ? `/hero/squik-hero-${time}-still.png` : `/hero/squik-hero-${time}.webp`}
-        width={WIDTH}
-        height={HEIGHT}
-        alt=""
-        decoding="async"
-        draggable={false}
+        data-time={time}
         data-ready={fit ? '' : undefined}
+        data-animate={animate ? '' : undefined}
         style={fit ? { width: WIDTH * fit.scale, left: fit.left, top: fit.top } : undefined}
-      />
+      >
+        {/* Sun and moon sit behind both scenes, so they set and rise behind
+            the diorama when the theme changes. */}
+        <img className="squik-sky squik-sun" src="/hero/squik-sun.png" alt="" draggable={false} />
+        <img className="squik-sky squik-moon" src="/hero/squik-moon.png" alt="" draggable={false} />
+        {SCENES.map((scene) => (
+          <img
+            key={scene}
+            className="squik-scene"
+            data-active={scene === time ? '' : undefined}
+            // The scene not on show loads once the page has settled.
+            src={scene === time || loadBoth ? sceneSrc(scene, still) : undefined}
+            width={WIDTH}
+            height={HEIGHT}
+            alt=""
+            decoding="async"
+            draggable={false}
+          />
+        ))}
+      </div>
     </div>
   );
 }
