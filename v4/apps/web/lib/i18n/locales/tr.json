@@ -44,6 +44,12 @@
     "rangesPlaceholder": "00:30 - 01:15\n02:00 - 03:30",
     "parsedRanges": "{{count}} aralık hazır"
   },
+  "merge": {
+    "clips": "Birleştirilecek klipler",
+    "addMore": "Klip ekle",
+    "summary_one": "{{count}} klip · {{size}}",
+    "summary_other": "{{count}} klip · {{size}}"
+  },
   "errors": {
     "invalidFile": "Lütfen desteklenen bir video dosyası seçin (MP4, MOV, WebM, MKV).",
     "invalidFiles": "Lütfen desteklenen video dosyaları seçin (MP4, MOV, WebM, MKV).",
@@ -71,7 +77,9 @@
     "minimize": "Küçült",
     "maximize": "Büyüt",
     "restore": "Geri yükle",
-    "close": "Kapat"
+    "close": "Kapat",
+    "moveEarlier": "Öne al",
+    "moveLater": "Sona al"
   },
   "status": {
     "mergingVideos": "Videolar birleştiriliyor…",

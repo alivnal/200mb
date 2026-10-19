@@ -8,13 +8,13 @@
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  formatBytes,
   formatTimestamp,
   parseDeleteRangeText,
   validateDeleteSegments,
   type TrimSegment,
 } from '@/lib/squish-core';
 import { probeVideoFile } from '@/lib/compress-wasm';
-import AnimatedSection from './AnimatedSection';
 import { useFlipList } from '@/hooks/useFlipList';
 import CompressOIcon from './CompressOIcon';
 import MaterialIcon from './MaterialIcon';
@@ -344,6 +344,70 @@ export default function VideoSelector({
                 {t('landing.browseSingle')}
               </button>
             </div>
+          ) : mode === 'merge' && clips.length > 0 ? (
+            // Bento tray in the drop zone's place, so the card keeps its height:
+            // the lead clip gets a wide tile, then one tile per clip and an add
+            // tile. Tiles rise in; the tray scrolls once it is full.
+            <ul
+              ref={clipListRef}
+              aria-label={t('merge.clips')}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`merge-bento ${isDragActive ? 'is-dragging' : ''}`}
+            >
+              {clips.map((clip, index) => (
+                <li
+                  key={clip.id}
+                  data-flip-id={clip.id}
+                  className={`merge-tile ${index === 0 ? 'is-lead' : ''}`}
+                  style={{ animationDelay: `${Math.min(index, 6) * 45}ms` }}
+                >
+                  <p className="merge-tile-name" title={clip.file.name}>
+                    <span className="merge-tile-order">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="truncate">{clip.file.name}</span>
+                  </p>
+                  <div className="merge-tile-foot">
+                    <span className="merge-tile-size">{formatBytes(clip.file.size, 1)}</span>
+                    <div className="merge-tile-controls">
+                      <button
+                        type="button"
+                        aria-label={t('a11y.moveEarlier')}
+                        disabled={disabled || index === 0}
+                        onClick={() => moveClip(index, -1)}
+                        className="clip-control"
+                      >
+                        <MaterialIcon name="arrow_back" size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t('a11y.moveLater')}
+                        disabled={disabled || index === clips.length - 1}
+                        onClick={() => moveClip(index, 1)}
+                        className="clip-control"
+                      >
+                        <MaterialIcon name="arrow_forward" size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={t('a11y.remove')}
+                        disabled={disabled}
+                        onClick={() => removeClip(index)}
+                        className="clip-control"
+                      >
+                        <MaterialIcon name="close" size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+              <li data-flip-id="merge-add" className="merge-tile merge-tile-add">
+                <button type="button" disabled={disabled} onClick={handleZoneClick}>
+                  <MaterialIcon name="add" size={22} />
+                  <span>{t('merge.addMore')}</span>
+                </button>
+              </li>
+            </ul>
           ) : (
             <div className="drop-zone-wrap">
               <button
@@ -420,51 +484,14 @@ export default function VideoSelector({
             </div>
           ) : null}
 
-          <AnimatedSection show={mode === 'merge' && clips.length > 0} className="merge-clips">
-            <ul
-              ref={clipListRef}
-              className="scrollbar-hidden max-h-[min(12rem,28vh)] space-y-2 overflow-y-auto overscroll-contain"
-            >
-              {clips.map((clip, index) => (
-                <li
-                  key={clip.id}
-                  data-flip-id={clip.id}
-                  className="merge-clip"
-                >
-                  <MaterialIcon name="movie" size={18} className="text-accent shrink-0" />
-                  <span className="flex-1 truncate text-ink">{clip.file.name}</span>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      aria-label={t('a11y.moveUp')}
-                      disabled={index === 0}
-                      onClick={() => moveClip(index, -1)}
-                      className="clip-control"
-                    >
-                      <MaterialIcon name="arrow_upward" size={18} />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={t('a11y.moveDown')}
-                      disabled={index === clips.length - 1}
-                      onClick={() => moveClip(index, 1)}
-                      className="clip-control"
-                    >
-                      <MaterialIcon name="arrow_downward" size={18} />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={t('a11y.remove')}
-                      onClick={() => removeClip(index)}
-                      className="clip-control"
-                    >
-                      <MaterialIcon name="close" size={18} />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="flex justify-center pt-1">
+          {mode === 'merge' && clips.length > 0 && (
+            <div className="merge-footer">
+              <p className="merge-summary">
+                {t('merge.summary', {
+                  count: clips.length,
+                  size: formatBytes(clips.reduce((sum, clip) => sum + clip.file.size, 0), 1),
+                })}
+              </p>
               <button
                 type="button"
                 disabled={disabled || clips.length < 2}
@@ -474,7 +501,7 @@ export default function VideoSelector({
                 {t('common.merge')}
               </button>
             </div>
-          </AnimatedSection>
+          )}
 
           {error && mode !== 'trim' && (
             <div className="inline-error">

@@ -13,8 +13,11 @@ interface MaterialIconProps {
 }
 
 const ICON_PATHS: Record<string, string> = {
+  add: 'M12 5v14M5 12h14',
   add_circle: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm1 15h-2v-4H7v-2h4V7h2v4h4v2h-4v4Z',
+  arrow_back: 'M19 12H5m0 0 6 6m-6-6 6-6',
   arrow_downward: 'M12 3v14m0 0 6-6m-6 6-6-6M5 21h14',
+  arrow_forward: 'M5 12h14m0 0-6 6m6-6-6-6',
   arrow_upward: 'M12 21V7m0 0 6 6m-6-6-6 6M5 3h14',
   cancel: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm5 13.6L15.6 17 12 13.4 8.4 17 7 15.6l3.6-3.6L7 8.4 8.4 7 12 10.6 15.6 7 17 8.4 13.4 12l3.6 3.6Z',
   close: 'm18 6-12 12M6 6l12 12',

@@ -44,6 +44,12 @@
     "rangesPlaceholder": "00:30 - 01:15\n02:00 - 03:30",
     "parsedRanges": "{{count}} range(s) ready"
   },
+  "merge": {
+    "clips": "Clips to merge",
+    "addMore": "Add clips",
+    "summary_one": "{{count}} clip · {{size}}",
+    "summary_other": "{{count}} clips · {{size}}"
+  },
   "errors": {
     "invalidFile": "Please choose a supported video file (MP4, MOV, WebM, MKV).",
     "invalidFiles": "Please choose supported video files (MP4, MOV, WebM, MKV).",
@@ -73,7 +79,9 @@
     "minimize": "Minimize",
     "maximize": "Maximize",
     "restore": "Restore",
-    "close": "Close"
+    "close": "Close",
+    "moveEarlier": "Move earlier",
+    "moveLater": "Move later"
   },
   "status": {
     "mergingVideos": "Merging Videos…",
