@@ -933,6 +933,139 @@ local function drawSky(img, t)
   end
 end
 
+-- Atmosphere ------------------------------------------------------------------
+-- A translucent layer between the beavers and the FX, so foam, fireflies and
+-- the lantern stay crisp on top. By day, light shafts fan out from the sun
+-- across the diorama with dust drifting in them; by night, wisps of mist
+-- drift over the water. Rays only touch the diorama, never the empty canvas
+-- around it, and are posterised into a few soft bands: dithering reads as
+-- grain and nearly doubles the WebPs.
+
+-- Index into an alpha table for `v` (0..1).
+local function band(v, alphas) return alphas[math.floor(v * (#alphas - 1) + 0.5) + 1] end
+
+-- World distance (x+y) and height z from a depth key; z spans -40..23.
+local function fromKey(d) local s = (d + 40) // 64; return s, d - s * 64 end
+
+local RAY = { r = 255, g = 241, b = 196 }
+local RAY_ALPHA = { 0, 28, 52, 76 }
+-- Beam centre (radians below the horizon, looking left from the sun), half
+-- width, and pulse: cycles per loop and phase.
+local BEAMS = {
+  { 0.22, 0.035, 1, 0.0 }, { 0.38, 0.05, 2, 1.3 }, { 0.55, 0.03, 1, 2.6 },
+  { 0.70, 0.055, 2, 4.0 }, { 0.88, 0.04, 1, 5.1 }, { 1.05, 0.03, 2, 0.7 },
+}
+local rayAngle, rayFade = {}, {}
+for p = 1, NPIX do
+  local dx, dy = SUN_X - (p - 1) % W, (p - 1) // W - SUN_Y
+  rayAngle[p] = math.atan(dy, dx)
+  local r = math.sqrt(dx * dx + dy * dy)
+  rayFade[p] = smooth((r - 24) / 40) * (1 - 0.55 * smooth((r - 140) / 160))
+end
+
+local function rayAt(p, t)
+  local sway = 0.018 * math.sin(2 * math.pi * t / L)
+  local a, v = rayAngle[p], 0
+  for _, bm in ipairs(BEAMS) do
+    local u = math.abs(a - bm[1] - sway) / bm[2]
+    if u < 1 then
+      local pulse = 0.65 + 0.35 * math.sin(2 * math.pi * bm[3] * t / L + bm[4])
+      v = math.max(v, (1 - u * u) * pulse)
+    end
+  end
+  return v * rayFade[p]
+end
+
+-- Night mist: soft wisps that drift downstream low over the water, plus a
+-- cloud of spray billowing up where the edge fall lands. Each wisp sits at a
+-- world height and depth-tests like the beavers: trees, the lodge and the dam
+-- in front hide it, low ground and water never do. Beavers stay unveiled.
+local MIST_EDGE = pc.rgba(168, 186, 224, 58)
+local MIST_CORE = pc.rgba(192, 208, 240, 96)
+-- Runs of wisps: world x span, height, count, and slots moved per loop.
+-- Wisp shape depends on where it is in the run, not which wisp it is, so
+-- after a loop every wisp has moved into the next one's place: seamless.
+local MIST_RUNS = { { 2, 54, POND + 1, 6, 1 }, { 61, GX - 1, DOWN + 1, 3, 1 } }
+local MIST_PARTS = { { 0, 0, 1 }, { -8, 1, 0.65 }, { 8, 1, 0.7 }, { -3, -1, 0.6 }, { 4, -2, 0.5 } }
+
+-- Max-blends an ellipse cluster into `mist` (1 edge, 2 core).
+local function stamp(mist, b, cx, cy, rx, ry, zw, key)
+  if rx < 1.5 then return end
+  for y = math.floor(cy - ry * 2), math.ceil(cy + ry * 2) do
+    for x = math.floor(cx - rx * 1.8), math.ceil(cx + rx * 1.8) do
+      if x >= 0 and y >= 0 and x < W and y < H then
+        local p = y * W + x + 1
+        local best = 0
+        for _, q in ipairs(MIST_PARTS) do
+          local dx = (x - cx - q[1] * rx / 9) / (rx * q[3])
+          local dy = (y - cy - q[2]) / (ry * q[3])
+          local d = dx * dx + dy * dy
+          if d <= 0.4 then best = 2; break elseif d <= 1 then best = 1 end
+        end
+        if best > (mist[p] or 0) then
+          local o = b.own[p]
+          local visible = o == 0 or not key
+          if o ~= 0 and o ~= 3 and key then
+            local _, z = fromKey(b.dep[p])
+            visible = z <= zw or b.dep[p] <= key
+          end
+          if visible then mist[p] = best end
+        end
+      end
+    end
+  end
+end
+
+local function drawMist(img, t, b)
+  local mist = {}
+  for _, run in ipairs(MIST_RUNS) do
+    local xa, xb, zw, n, k = run[1], run[2], run[3], run[4], run[5]
+    for i = 0, n - 1 do
+      local u = ((i + k * t / L) / n) % 1
+      local wx = xa + u * (xb - xa)
+      local wy = cy(wx) + 0.35 * hw(wx) * math.sin(2 * math.pi * u * 1.5)
+      local size = smooth(u / 0.18) * smooth((1 - u) / 0.18) * (0.9 + 0.12 * math.sin(2 * math.pi * 3 * u))
+      local sx, sy = proj(wx, wy, zw)
+      stamp(mist, b, sx, sy, 16 * size, 4 * size, zw, math.floor((wx + wy) * 64 + zw))
+    end
+  end
+  -- Spray puffs rise and swell off the plunge pool, on a 60-frame life.
+  for j = 0, 7 do
+    local u = ((t + j * 15) % 60 + (j % 2) * 7) % 60 / 60
+    local fy = FALL_Y0 + (j * 5) % math.max(1, FALL_Y1 - FALL_Y0 + 1)
+    local bx, by = proj(fallX(BOTTOM_Z), fy, BOTTOM_Z)
+    local s = math.sin(math.pi * u)
+    stamp(mist, b, bx + (j % 2 == 0 and -1 or 1) * u * 9, by + 3 - u * 22, (7 + 8 * u) * s, (4 + 3 * u) * s, 0, nil)
+  end
+  for p, v in pairs(mist) do
+    img:drawPixel((p - 1) % W, (p - 1) // W, v == 2 and MIST_CORE or MIST_EDGE)
+  end
+end
+
+local function drawAtmos(img, t, b)
+  if NIGHT then return drawMist(img, t, b) end
+  for p = 1, NPIX do
+    if b.own[p] ~= 0 then
+      local a = band(rayAt(p, t), RAY_ALPHA)
+      if a > 0 then img:drawPixel((p - 1) % W, (p - 1) // W, pc.rgba(RAY.r, RAY.g, RAY.b, a)) end
+    end
+  end
+  do
+    -- Dust motes drift down the shafts and glint only where the light is.
+    local mote = pc.rgba(255, 248, 220, 220)
+    for n = 1, 40 do
+      local x0, y0 = math.floor(hash(n, 4, 111) * 260), math.floor(hash(n, 5, 112) * 200) + 40
+      local ph = hash(n, 6, 113)
+      local x = x0 + math.floor(4 * math.sin(2 * math.pi * (t / L + ph)) + 0.5)
+      local y = y0 + math.floor(3 * math.sin(2 * math.pi * (2 * t / L + ph)) + 0.5)
+      if x >= 0 and y >= 0 and x < W and y < H then
+        local p = y * W + x + 1
+        if b.own[p] ~= 0 and rayAt(p, t) > 0.35 then img:drawPixel(x, y, mote) end
+      end
+    end
+  end
+end
+
 -- Frame render ---------------------------------------------------------------
 
 local function wakeFor(st, t)
@@ -974,6 +1107,7 @@ Lterrain.name = "World"
 local function layer(name) local l = spr:newLayer(); l.name = name; return l end
 local Lwater = layer("Water")
 local Lbeaver = layer("Beavers")
+local Latmos = layer("Atmosphere")
 local Lfx = layer("FX")
 local Lsky = layer("Sky")
 Lsky.stackIndex = 1
@@ -1002,6 +1136,10 @@ for i = 1, L do
   end
   spr:newCel(Lwater, i, wImg, Point(0, 0))
   spr:newCel(Lbeaver, i, bImg, Point(0, 0))
+
+  local aImg = Image(W, H, ColorMode.RGB)
+  drawAtmos(aImg, t, b)
+  spr:newCel(Latmos, i, aImg, Point(0, 0))
 
   local fImg = Image(W, H, ColorMode.RGB)
   drawFx(fImg, t, states)
