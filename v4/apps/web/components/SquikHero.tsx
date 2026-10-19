@@ -95,11 +95,16 @@ function measureFit(stage: HTMLElement, card: HTMLElement, currentShift: number)
 
 // Stacked, the scene is in flow above the card. CSS sizes it to what the first
 // screen has left (100svh, so mobile browser bars never cover the card) after
-// this much: the page above the stage, the row gap, the card and a gap.
+// this much: the page above the stage, the row gap, the card, a gap, and
+// whatever sits below the scroll area on screen (the footer of the desktop
+// app, whose window never scrolls).
 function stackedReserved(stage: HTMLElement, card: HTMLElement, layout: HTMLElement): number {
-  const stageTop = stage.getBoundingClientRect().top - document.documentElement.getBoundingClientRect().top;
+  const page = document.documentElement;
+  const stageTop = stage.getBoundingClientRect().top - page.getBoundingClientRect().top;
   const rowGap = parseFloat(getComputedStyle(layout).rowGap) || 0;
-  return Math.ceil(stageTop + rowGap + card.getBoundingClientRect().height + 2 * GAP);
+  const scroller = stage.closest('.screen-content');
+  const below = scroller ? Math.max(0, page.clientHeight - scroller.getBoundingClientRect().bottom) : 0;
+  return Math.ceil(stageTop + rowGap + card.getBoundingClientRect().height + 2 * GAP + below);
 }
 
 export default function SquikHero() {

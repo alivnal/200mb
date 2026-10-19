@@ -124,3 +124,46 @@ html:is([data-platform="mac"], [data-platform="win"]) .tool-layout {
     display: none;
   }
 }
+
+/* Very short windows (a 1366x768 laptop at 125% or more, a 1080p one at 150%
+   or more): header, footer and the screens themselves tighten further. */
+@media (max-height: 620px) {
+  html:is([data-platform="mac"], [data-platform="win"]) .app-header {
+    min-height: 4rem;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .app-site-footer {
+    padding-block: 0.5rem 0.75rem;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .drop-zone {
+    min-height: 10rem;
+    padding: 1.25rem;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .success-stat {
+    padding-block: 0.5rem;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .action-btn-row {
+    margin-top: 0.75rem;
+  }
+
+  /* The four result numbers stay on one row rather than wrapping to two. */
+  html:is([data-platform="mac"], [data-platform="win"]) .success-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .share-targets {
+    margin-top: 0.75rem;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .progress-ring {
+    width: 6rem;
+    height: 6rem;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) :is(.app-panel-header, .app-panel-body, .app-panel-footer) {
+    padding-block: 0.75rem;
+  }
+}

@@ -9,7 +9,7 @@ import { FfmpegJobs, type JobOutput } from './jobs';
 import type { NativeJob, NativeJobResult } from './contracts';
 import { installApplicationMenu } from './menu';
 import { shareableCopy, shareFile } from './share';
-import { rememberWindowBounds, restoreWindowBounds } from './window-state';
+import { rememberWindowBounds, restoreWindowGeometry } from './window-state';
 
 const currentDirectory = fileURLToPath(new URL('.', import.meta.url));
 const rendererDirectory = join(currentDirectory, '../dist');
@@ -194,10 +194,7 @@ function createWindow(): void {
     : {};
 
   mainWindow = new BrowserWindow({
-    ...restoreWindowBounds(),
-    // Wide enough that the scene and the card always sit side by side.
-    minWidth: 960,
-    minHeight: 640,
+    ...restoreWindowGeometry(),
     ...chrome,
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#0b0b0f' : '#f9fafb',
     show: false,
