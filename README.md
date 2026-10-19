@@ -33,6 +33,42 @@ npm run dev:web:v4
 npm run dev
 ```
 
+## Desktop builds
+
+The desktop app renders the v4 web UI (`v4/apps/web`) as is, so web UI changes ship to
+desktop on the next build. Only the compression layer differs: Vite swaps
+`lib/compress-wasm` for `v3/apps/desktop/src/native-compress.ts`, which runs compress,
+merge and trim jobs with native FFmpeg/ffprobe binaries in the Electron main process.
+Each macOS build bundles the FFmpeg binaries for its target architecture, and both
+architectures can be built from either kind of Mac. The Windows build also runs on a
+Mac (no Wine needed): it fetches the Windows FFmpeg binaries pinned in
+`package-lock.json` into `build-resources/bin/win32-x64/`.
+
+```bash
+# Apple Silicon (arm64)
+npm run dist:mac:arm64
+
+# Intel Mac (x64)
+npm run dist:mac:x64
+
+# Windows x64: NSIS installer and portable .exe
+npm run dist:win
+
+# Windows x64 portable .exe only
+npm run dist:portable
+```
+
+The macOS packages are ad-hoc signed, not Developer ID signed or notarized. On first
+launch users must approve the app in System Settings > Privacy & Security > Open Anyway.
+The Windows executables are unsigned, so SmartScreen asks users to choose More info >
+Run anyway. Configure code signing before distributing broadly.
+
+The **Windows desktop** workflow (`.github/workflows/windows-desktop.yml`) builds the
+Windows app on a Windows runner, installs it silently, and drives it with
+`v3/apps/desktop/scripts/windows-smoke.mjs`: window chrome, menu, and compress, merge
+and trim jobs on paths with spaces, Turkish letters and a UNC share. Run it from the
+Actions tab.
+
 ## Build & deploy
 
 ```bash

@@ -1,24 +1,51 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "experimentalDecorators": true,
-    "useDefineForClassFields": false,
+    "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "skipLibCheck": true,
-    "moduleResolution": "bundler",
+    "moduleResolution": "Bundler",
     "isolatedModules": true,
-    "moduleDetection": "force",
-    "allowJs": true,
     "jsx": "react-jsx",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@squish/core": ["../../packages/squish-core/src/index.ts"],
-      "@squish/i18n": ["../../packages/i18n/src/index.ts"],
-      "@squish/i18n/react": ["../../packages/i18n/src/react.tsx"]
-    },
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+    "strict": true,
+    "types": [
+      "vite/client",
+      "node"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/lib/compress-wasm": [
+        "./src/native-compress.ts"
+      ],
+      "@/lib/platform": [
+        "./src/platform.ts"
+      ],
+      "next/link": [
+        "./src/shims/next-link.tsx"
+      ],
+      "next/dynamic": [
+        "./src/shims/next-dynamic.tsx"
+      ],
+      "@squish/i18n": [
+        "../../../v4/apps/web/lib/i18n/index.ts"
+      ],
+      "@squish/i18n/react": [
+        "../../../v4/apps/web/lib/i18n/react.tsx"
+      ],
+      "@/*": [
+        "../../../v4/apps/web/*"
+      ]
+    }
   },
-  "include": ["src", "electron"]
+  "include": [
+    "src",
+    "electron"
+  ]
 }

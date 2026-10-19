@@ -1,0 +1,68 @@
+@import "../../../../v4/apps/web/app/globals.css";
+@source "../../../../v4/apps/web/components";
+
+/*
+ * Desktop window chrome around the shared web UI. The window has a hidden title
+ * bar: the header is the drag area and leaves room for the traffic lights on
+ * macOS (left) or the caption buttons on Windows (top right).
+ */
+:root {
+  /* Traffic lights end ~76px from the window edge; keep the brand clear of them. */
+  --mac-traffic-light-room: 5.75rem;
+}
+
+html:is([data-platform="mac"], [data-platform="win"]) .app-header {
+  -webkit-app-region: drag;
+}
+
+html[data-platform="mac"] .app-header {
+  /* The header is centred with a gutter of (100vw - width) / 2; pad only the shortfall. */
+  padding-left: max(0px, calc(var(--mac-traffic-light-room) - (100vw - min(100vw - 3rem, 76rem)) / 2));
+}
+
+html[data-platform="mac"][data-fullscreen] .app-header {
+  padding-left: 0;
+}
+
+/*
+ * Windows draws its caption buttons over the top right of the page; the
+ * titlebar-area env() values say where they start. Pad the header's right side
+ * by however much of that its centred gutter does not already clear.
+ */
+html[data-platform="win"] .app-header {
+  --win-caption-room: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - 8.75rem)) + 0.75rem);
+  padding-right: max(0px, calc(var(--win-caption-room) - (100vw - min(100vw - 3rem, 76rem)) / 2));
+}
+
+html[data-platform="win"][data-fullscreen] .app-header {
+  padding-right: 0;
+}
+
+html:is([data-platform="mac"], [data-platform="win"]) .app-header :is(a, button, select, input) {
+  -webkit-app-region: no-drag;
+}
+
+/* Interface text behaves like a desktop app: not selectable, arrow cursor on controls. */
+html:is([data-platform="mac"], [data-platform="win"]) body {
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+html:is([data-platform="mac"], [data-platform="win"]) :is(textarea, input, .break-all) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+html:is([data-platform="mac"], [data-platform="win"]) :is(button, [role="button"], label) {
+  cursor: default;
+}
+
+/* Mac links are arrows too; Windows links keep the hand. */
+html[data-platform="mac"] a {
+  cursor: default;
+}
+
+html:is([data-platform="mac"], [data-platform="win"]) img {
+  -webkit-user-drag: none;
+}

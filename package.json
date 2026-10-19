@@ -20,9 +20,12 @@
     "sync:squish-core": "node v3/scripts/sync-squish-core.mjs",
     "dist": "npm run dist -w @squish/desktop",
     "dist:portable": "npm run dist:portable -w @squish/desktop",
+    "dist:win": "npm run dist:win -w @squish/desktop",
+    "dist:mac:arm64": "npm run dist:mac:arm64 -w @squish/desktop",
+    "dist:mac:x64": "npm run dist:mac:x64 -w @squish/desktop",
     "clean": "npm run clean -w @squish/desktop",
     "lint": "npm run lint -w @squish/web && npm run lint -w @squish/web-v4 && npm run lint -w @squish/desktop",
-    "postinstall": "node -e \"if (!process.env.VERCEL && !process.env.CI) require('child_process').execFileSync(process.execPath, ['v3/scripts/fix-electron.cjs'], {stdio:'inherit'})\""
+    "postinstall": "node -e \"if (!process.env.VERCEL && !process.env.CI && !process.env.npm_config_production && process.env.NODE_ENV !== 'production') require('child_process').execFileSync(process.execPath, ['v3/scripts/fix-electron.cjs'], {stdio:'inherit'})\""
   },
   "dependencies": {
     "@vercel/speed-insights": "^2.0.0"

@@ -1,44 +1,45 @@
 {
   "name": "@squish/desktop",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "private": true,
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
-    "build:electron": "esbuild electron/main.ts --bundle --platform=node --format=esm --packages=external --alias:@squish/core=../../packages/squish-core/src/index.ts --outfile=dist-electron/main.js && node -e \"import('node:fs').then(({copyFileSync})=>copyFileSync('electron/preload.cjs','dist-electron/preload.cjs'))\"",
-    "dev": "npm run build:electron && concurrently -k \"vite --port 3000\" \"wait-on http://localhost:3000 && cross-env VITE_DEV_SERVER_URL=http://localhost:3000 electron .\"",
-    "build": "vite build && node ../../scripts/verify-dist.cjs && npm run build:electron",
+    "build:electron": "esbuild electron/main.ts --bundle --platform=node --format=esm --packages=external --outfile=dist-electron/main.js && node -e \"import('node:fs').then(({copyFileSync})=>copyFileSync('electron/preload.cjs','dist-electron/preload.cjs'))\"",
+    "build:native": "node scripts/copy-native-binaries.mjs",
+    "dev": "npm run build:electron && npm run build:native && concurrently -k \"vite --port 3000\" \"wait-on http://localhost:3000 && cross-env VITE_DEV_SERVER_URL=http://localhost:3000 electron .\"",
+    "build": "vite build && npm run build:electron && npm run build:native",
     "dist": "npm run build && electron-builder",
-    "dist:portable": "npm run build && electron-builder --win portable",
+    "dist:mac": "npm run build && electron-builder --mac dmg",
+    "dist:mac:arm64": "cross-env SQUIK_TARGET_ARCH=arm64 npm run build && electron-builder --mac dmg --arm64",
+    "dist:mac:x64": "cross-env SQUIK_TARGET_ARCH=x64 npm run build && electron-builder --mac dmg --x64",
+    "dist:win": "cross-env SQUIK_TARGET_PLATFORM=win32 SQUIK_TARGET_ARCH=x64 npm run build && electron-builder --win --x64",
+    "dist:portable": "cross-env SQUIK_TARGET_PLATFORM=win32 SQUIK_TARGET_ARCH=x64 npm run build && electron-builder --win portable --x64",
     "clean": "node -e \"const fs=require('fs');['dist','dist-electron','release'].forEach(d=>fs.rmSync(d,{recursive:true,force:true}))\"",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@ffmpeg-installer/ffmpeg": "^1.1.0",
-    "@ffprobe-installer/ffprobe": "^2.1.2"
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1"
   },
   "devDependencies": {
-    "@squish/core": "*",
-    "@squish/i18n": "*",
-    "@fontsource/pixelify-sans": "^5.2.7",
-    "@fontsource/material-symbols-outlined": "^5.2.45",
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@ffprobe-installer/ffprobe": "^2.1.2",
     "@gsap/react": "^2.1.2",
-    "gsap": "^3.15.0",
-    "lucide-react": "^0.546.0",
-    "react": "^19.0.1",
-    "react-dom": "^19.0.1",
-    "@tailwindcss/vite": "^4.1.14",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.14.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^5.0.4",
-    "autoprefixer": "^10.4.21",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "electron": "35.7.5",
-    "electron-builder": "^25.1.8",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.25.0",
-    "tailwindcss": "^4.1.14",
+    "gsap": "^3.15.0",
+    "i18next": "^24.2.3",
+    "react-i18next": "^15.7.4",
+    "tailwindcss": "^4.3.3",
     "typescript": "~5.8.2",
     "vite": "^6.2.3",
     "wait-on": "^8.0.3"
@@ -53,41 +54,68 @@
     "directories": {
       "output": "release"
     },
+    "npmRebuild": false,
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
       "package.json"
     ],
-    "asarUnpack": [
-      "dist-electron/preload.cjs",
-      "dist-electron/preload.js"
-    ],
-    "extraResources": [
-      {
-        "from": "../../../node_modules/@ffmpeg-installer/win32-x64/ffmpeg.exe",
-        "to": "ffmpeg.exe"
-      },
-      {
-        "from": "../../../node_modules/@ffprobe-installer/win32-x64/ffprobe.exe",
-        "to": "ffprobe.exe"
-      }
-    ],
+    "mac": {
+      "category": "public.app-category.video",
+      "target": [
+        "dmg"
+      ],
+      "icon": "build-resources/icon.png",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "extraResources": [
+        {
+          "from": "build-resources/bin",
+          "to": "bin",
+          "filter": [
+            "ffmpeg",
+            "ffprobe"
+          ]
+        }
+      ]
+    },
     "win": {
-      "signAndEditExecutable": false,
+      "icon": "build-resources/icon.png",
+      "signExecutable": false,
+      "extraResources": [
+        {
+          "from": "build-resources/bin/win32-x64",
+          "to": "bin"
+        }
+      ],
       "target": [
         {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
     "portable": {
-      "artifactName": "Squik-${version}-portable.exe"
+      "artifactName": "Squik-${version}-win-${arch}-portable.${ext}"
+    },
+    "dmg": {
+      "artifactName": "Squik-${version}-mac-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": false
+      "allowToChangeInstallationDirectory": false,
+      "artifactName": "Squik-${version}-win-${arch}-setup.${ext}",
+      "shortcutName": "Squik",
+      "uninstallDisplayName": "Squik"
     }
   }
 }
