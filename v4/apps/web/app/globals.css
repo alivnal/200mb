@@ -1448,6 +1448,8 @@ body {
   .tool-layout {
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
+    /* Spare height stays below the card instead of pushing the scene down. */
+    align-content: start;
     padding-top: 0;
     padding-bottom: 0;
     gap: 2rem;
@@ -1461,7 +1463,10 @@ body {
   }
 
   /* Stacked: the whole scene sits in its own row above the card, scaled to
-     fit the column (2x at most), so nothing is ever cut or covered. */
+     fit the column (2x at most) and the first screen, so the whole card is
+     on screen too. SquikHero sets --squik-stack-reserved: the height above
+     the scene plus the card below it. svh leaves room for mobile browser
+     bars; vh is the fallback where svh is missing. */
   .squik-stage {
     grid-column: 1;
     grid-row: 1;
@@ -1473,8 +1478,14 @@ body {
 
   .squik-hero {
     position: relative;
-    width: min(100%, 640px);
+    width: min(100%, 640px, max(6.25rem, (100vh - var(--squik-stack-reserved, 0px)) * 320 / 260));
+    width: min(100%, 640px, max(6.25rem, (100svh - var(--squik-stack-reserved, 0px)) * 320 / 260));
     margin: 0 auto;
+  }
+
+  /* No room left for a useful scene: SquikHero leaves it out. */
+  .squik-stage[data-tight] .squik-hero {
+    display: none;
   }
 
   .tool-ui {
@@ -1577,6 +1588,12 @@ body {
 
   .app-site-footer {
     width: calc(100% - 1.5rem);
+  }
+
+  /* Three tab labels fit side by side on the narrowest phones. */
+  .tool-tab {
+    padding-inline: 0.25rem;
+    font-size: 0.875rem;
   }
 }
 

@@ -17,6 +17,9 @@ const MEADOW_Y = 118;
 const GAP = 8;
 const MAX_SCALE = 4;
 const SIDE_BY_SIDE = '(min-width: 901px)';
+// Stacked, a scene shorter than this is left out, so a tall card (trim with a
+// video loaded) gets the whole first screen. Matches the CSS minimum width.
+const MIN_STACKED_HEIGHT = 80;
 const SCENES = ['day', 'night'] as const;
 type Scene = (typeof SCENES)[number];
 
@@ -28,8 +31,16 @@ type Fit = { scale: number; left: number; top: number; cardShift: number };
 // Half steps land on whole device pixels on 2x screens, so the art stays crisp.
 const halfStep = (scale: number) => Math.max(1, Math.floor(scale * 2) / 2);
 
-// Places the whole scene between the header and the bottom of the scroll area
-// and inside the window, never under the card, and the whole card on screen.
+// The bottom of the first screen, in viewport coordinates: the page can be
+// taller than the window (short laptop screens), and everything placed here
+// must be visible without scrolling.
+function firstScreenBottom(): number {
+  const page = document.documentElement;
+  return page.getBoundingClientRect().top + page.clientHeight;
+}
+
+// Places the whole scene between the header and the bottom of the first
+// screen, never under the card, and the whole card on screen.
 // Two layouts compete and the one showing the scene larger wins:
 // - meadow: the card's corner sits on the empty front meadow (short cards);
 // - beside: the scene sits entirely left of the card (tall cards: trim,
@@ -41,7 +52,7 @@ function measureFit(stage: HTMLElement, card: HTMLElement, currentShift: number)
   const box = card.getBoundingClientRect();
   const anchor = stage.getBoundingClientRect();
   const top = (header?.getBoundingClientRect().bottom ?? 0) + GAP;
-  const bottom = (scroller?.getBoundingClientRect().bottom ?? window.innerHeight) - GAP;
+  const bottom = Math.min(scroller?.getBoundingClientRect().bottom ?? Infinity, firstScreenBottom()) - GAP;
   const right = document.documentElement.clientWidth - GAP;
   const room = bottom - top;
 
@@ -76,6 +87,15 @@ function measureFit(stage: HTMLElement, card: HTMLElement, currentShift: number)
     top: imageTop - anchor.top,
     cardShift: cardTop - (box.top - currentShift),
   };
+}
+
+// Stacked, the scene is in flow above the card. CSS sizes it to what the first
+// screen has left (100svh, so mobile browser bars never cover the card) after
+// this much: the page above the stage, the row gap, the card and a gap.
+function stackedReserved(stage: HTMLElement, card: HTMLElement, layout: HTMLElement): number {
+  const stageTop = stage.getBoundingClientRect().top - document.documentElement.getBoundingClientRect().top;
+  const rowGap = parseFloat(getComputedStyle(layout).rowGap) || 0;
+  return Math.ceil(stageTop + rowGap + card.getBoundingClientRect().height + 2 * GAP);
 }
 
 export default function SquikHero() {
@@ -113,6 +133,15 @@ export default function SquikHero() {
       // composes with its slide-in animation.
       if (next) layout.style.setProperty('--squik-card-shift', `${next.cardShift}px`);
       else layout.style.removeProperty('--squik-card-shift');
+      if (next) {
+        layout.style.removeProperty('--squik-stack-reserved');
+        stage.removeAttribute('data-tight');
+      } else {
+        const reserved = stackedReserved(stage, card, layout);
+        layout.style.setProperty('--squik-stack-reserved', `${reserved}px`);
+        // The page's client height is the small viewport, as 100svh is.
+        stage.toggleAttribute('data-tight', document.documentElement.clientHeight - reserved < MIN_STACKED_HEIGHT);
+      }
       setFit(next);
     };
     let frame = 0;
@@ -136,6 +165,7 @@ export default function SquikHero() {
       sideBySide.removeEventListener('change', update);
       window.removeEventListener('resize', update);
       layout.style.removeProperty('--squik-card-shift');
+      layout.style.removeProperty('--squik-stack-reserved');
     };
   }, []);
 
