@@ -1,7 +1,8 @@
 name: Windows desktop
 
 # Builds the Windows installer and portable app on a Windows runner, installs
-# the app silently, and drives it with v3/apps/desktop/scripts/windows-smoke.mjs.
+# the app silently, and drives it with v3/apps/desktop/scripts/windows-smoke.mjs
+# at 100%, 125% and 150% display scale.
 on:
   workflow_dispatch:
 
@@ -40,6 +41,19 @@ jobs:
         run: |
           npm install --no-save playwright-core@1.52.0
           node v3/apps/desktop/scripts/windows-smoke.mjs "$env:SQUIK_EXE" smoke-out
+
+      # Windows display scaling: 125% and 150%, as on most laptops, shrink the
+      # screen the app sees (this runner's 1024x768 becomes 819x614 and
+      # 683x512); the window must still open inside it without scrolling.
+      - name: Smoke test at 125% display scale
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: node v3/apps/desktop/scripts/windows-smoke.mjs "$env:SQUIK_EXE" smoke-out 1.25
+
+      - name: Smoke test at 150% display scale
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: node v3/apps/desktop/scripts/windows-smoke.mjs "$env:SQUIK_EXE" smoke-out 1.5
 
       - uses: actions/upload-artifact@v4
         if: always()
