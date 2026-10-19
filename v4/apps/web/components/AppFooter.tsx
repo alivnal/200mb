@@ -13,7 +13,14 @@ export default function AppFooter() {
 
   return (
     <footer className="app-site-footer">
-      <p className="app-site-footer-text">{t('landing.privacyNote')}</p>
+      <a
+        className="app-site-footer-author"
+        href="https://github.com/alivnal"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        ali ünal
+      </a>
       <p className="app-site-footer-credit">Squik · {t('landing.footerNote')}</p>
     </footer>
   );

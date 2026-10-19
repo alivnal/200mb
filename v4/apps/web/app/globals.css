@@ -260,11 +260,20 @@ body {
   }
 }
 
-.app-site-footer-text {
-  margin: 0;
+.app-site-footer-author {
   font-size: var(--text-body-sm, 0.875rem);
   line-height: 1.25rem;
+  font-weight: 600;
   color: var(--color-muted);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.app-site-footer-author:hover,
+.app-site-footer-author:focus-visible {
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .app-site-footer-credit {
