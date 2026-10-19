@@ -1466,4 +1466,13 @@ body {
   .merge-bento {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  /* The length tile shrinks to its content so the file name gets the room. */
+  .trim-bento {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .trim-file {
+    grid-column: auto;
+  }
 }
