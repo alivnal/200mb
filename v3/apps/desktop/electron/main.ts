@@ -195,7 +195,8 @@ function createWindow(): void {
 
   mainWindow = new BrowserWindow({
     ...restoreWindowBounds(),
-    minWidth: 760,
+    // Wide enough that the scene and the card always sit side by side.
+    minWidth: 960,
     minHeight: 640,
     ...chrome,
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#0b0b0f' : '#f9fafb',

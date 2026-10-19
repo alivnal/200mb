@@ -87,7 +87,7 @@ export default function CompressionStatus({
         <PanelBody className="flex flex-col items-center">
           <BeaverCompressionScene progress={progressSnap.progress} percentage={percentage} />
 
-          <div className="mt-space-6 text-center w-full">
+          <div className="status-details mt-space-6 text-center w-full">
             <p className="text-headline-sm leading-[30px] text-accent" aria-live="polite">
               {phaseTitle}
             </p>
@@ -105,7 +105,7 @@ export default function CompressionStatus({
               )}
             </div>
 
-            <p className="text-body-sm leading-5 text-muted mt-space-2 max-w-sm mx-auto">
+            <p className="status-note text-body-sm leading-5 text-muted mt-space-2 max-w-sm mx-auto">
               {wasmLoading ? t('status.wasmHint') : t('status.keepTabOpen')}
             </p>
           </div>

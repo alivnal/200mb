@@ -23,7 +23,7 @@ export default function BeaverCompressionScene({ progress, percentage }: BeaverC
 
   return (
     <div className="flex flex-col items-center gap-space-4 w-full">
-      <div className="relative w-40 h-40 sm:w-48 sm:h-48 flex items-center justify-center shrink-0">
+      <div className="progress-ring relative w-40 h-40 sm:w-48 sm:h-48 flex items-center justify-center shrink-0">
         <svg className="absolute w-full h-full" viewBox="0 0 120 120" aria-hidden>
           <circle
             className="text-gray-200"

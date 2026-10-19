@@ -66,3 +66,61 @@ html[data-platform="mac"] a {
 html:is([data-platform="mac"], [data-platform="win"]) img {
   -webkit-user-drag: none;
 }
+
+/*
+ * The window is the app, not a page: it never scrolls as a whole. Header and
+ * footer stay put and the screen area between them takes the rest; it
+ * scrolls only if a card outgrows the window (a long clip list). The tool
+ * layout drops its page-style minimum height, so it never pushes the window
+ * into a scroll; SquikHero fits the scene into the screen area.
+ */
+html:is([data-platform="mac"], [data-platform="win"]),
+html:is([data-platform="mac"], [data-platform="win"]) body {
+  height: 100%;
+  overflow: hidden;
+}
+
+html:is([data-platform="mac"], [data-platform="win"]) :has(> .app-canvas) {
+  height: 100vh;
+  min-height: 0;
+}
+
+html:is([data-platform="mac"], [data-platform="win"]) .app-canvas {
+  overflow: hidden;
+}
+
+html:is([data-platform="mac"], [data-platform="win"]) .tool-layout {
+  min-height: 0;
+  padding-bottom: 0;
+}
+
+/* Short windows (the 640px minimum, a small laptop screen): screens tighten
+   their spacing, the result screen drops its mascot, and the progress screen
+   shrinks its ring and drops its keep-open note, so a result with its share
+   row, or a running job with its Cancel button, fits without scrolling. */
+@media (max-height: 760px) {
+  html:is([data-platform="mac"], [data-platform="win"]) .screen-content {
+    padding-block: 0.75rem;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .screen-content > div {
+    padding-block: 0;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .success-mascot {
+    display: none;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .progress-ring {
+    width: 8rem;
+    height: 8rem;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .status-details {
+    margin-top: 0.75rem;
+  }
+
+  html:is([data-platform="mac"], [data-platform="win"]) .status-note {
+    display: none;
+  }
+}

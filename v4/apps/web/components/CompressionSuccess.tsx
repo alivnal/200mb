@@ -62,7 +62,7 @@ export default function CompressionSuccess({ result, onReset }: CompressionSucce
     <div>
       <ScreenPanel size="2xl" className="z-10">
         <PanelBody className="text-center pt-space-6 pb-space-6">
-          <div className="mx-auto mb-space-4 flex items-center justify-center">
+          <div className="success-mascot mx-auto mb-space-4 flex items-center justify-center">
             <PanelMascot variant="confetti" size="xl" />
           </div>
 

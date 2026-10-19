@@ -64,12 +64,16 @@ function measureFit(stage: HTMLElement, card: HTMLElement, currentShift: number)
     (right - box.left) / (WIDTH - MEADOW_X),
   ));
   const beside = halfStep(Math.min(MAX_SCALE, room / HEIGHT, (box.left - 2 * GAP) / WIDTH));
+  // halfStep never goes below 1x, so a short window can leave the meadow
+  // layout too tall for the room; then the scene goes beside the card if it fits there.
+  const meadowFits = HEIGHT * meadow <= room && MEADOW_Y * meadow + box.height <= room;
+  const besideFits = HEIGHT * beside <= room && WIDTH * beside <= box.left - 2 * GAP;
 
   let scale: number;
   let imageLeft: number;
   let imageTop: number;
   let cardTop: number;
-  if (meadow >= beside) {
+  if (meadowFits ? meadow >= beside || !besideFits : !besideFits) {
     scale = meadow;
     imageLeft = box.left - MEADOW_X * scale;
     // Centre scene and card together.
