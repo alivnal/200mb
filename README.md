@@ -58,8 +58,10 @@ npm run dist:win
 npm run dist:portable
 ```
 
-The macOS packages are ad-hoc signed, not Developer ID signed or notarized. On first
-launch users must approve the app in System Settings > Privacy & Security > Open Anyway.
+The macOS packages are ad-hoc signed, not Developer ID signed or notarized, so Gatekeeper
+blocks them on Macs that downloaded them ("Squik.app can't be opened"). Until they are
+notarized, users clear the download quarantine once after copying the app to Applications:
+`xattr -dr com.apple.quarantine /Applications/Squik.app`.
 The Windows executables are unsigned, so SmartScreen asks users to choose More info >
 Run anyway. Configure code signing before distributing broadly.
 
