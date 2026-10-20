@@ -177,7 +177,9 @@ try {
 
   // Jobs and paths do not depend on the display scale; the 100% run covers them.
   if (scale === 1) {
-    const outputPath = (jobId) => join(tmpdir(), 'squik-output', `${jobId}.mp4`);
+    // The app keeps results in a folder named after its process (see outputDirectory in main.ts).
+    const appPid = await app.evaluate(() => process.pid);
+    const outputPath = (jobId) => join(tmpdir(), 'squik-work', `${appPid}`, `${jobId}.mp4`);
     const runJob = (jobId, job) => page.evaluate(([id, value]) => window.squikDesktop.runJob(id, value), [jobId, job]);
 
     for (const [label, path] of Object.entries(clips)) {

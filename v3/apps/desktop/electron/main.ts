@@ -1,8 +1,8 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, powerSaveBlocker, protocol, shell } from 'electron';
 import { dirname, extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { existsSync } from 'node:fs';
-import { copyFile, mkdir, rm, stat } from 'node:fs/promises';
+import { existsSync, rmSync } from 'node:fs';
+import { copyFile, mkdir, readdir, rm, stat } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { CompressionCancelledError } from '../../../../v4/apps/web/lib/squish-core';
 import { FfmpegJobs, type JobOutput } from './jobs';
@@ -57,8 +57,33 @@ function getBinaryPath(name: 'ffmpeg' | 'ffprobe'): string {
   return path;
 }
 
+// Every running app (an installed copy next to a dev build, or two users on
+// one Mac) keeps its encodes in its own folder named after its process, so
+// one starting or quitting never deletes another's job in progress. Squik
+// 4.0.1 and earlier wiped a shared squik-output folder; this one is apart.
+const WORK_ROOT = 'squik-work';
+
 function outputDirectory(): string {
-  return join(app.getPath('temp'), 'squik-output');
+  return join(app.getPath('temp'), WORK_ROOT, `${process.pid}`);
+}
+
+function isRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    // EPERM: the process exists but belongs to another user.
+    return (error as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+/** Folders left behind by apps that crashed or were forced to quit. */
+async function removeAbandonedOutputs(): Promise<void> {
+  const root = join(app.getPath('temp'), WORK_ROOT);
+  const entries = await readdir(root, { withFileTypes: true }).catch(() => []);
+  await Promise.all(entries
+    .filter((entry) => entry.isDirectory() && Number(entry.name) !== process.pid && !isRunning(Number(entry.name)))
+    .map((entry) => rm(join(root, entry.name), { recursive: true, force: true })));
 }
 
 function assertTrustedSender(event: Electron.IpcMainInvokeEvent): void {
@@ -237,8 +262,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   protocol.handle(SCHEME, handleAppRequest);
-  // Encodes left behind by a crash or forced quit.
-  void rm(outputDirectory(), { recursive: true, force: true });
+  void removeAbandonedOutputs();
 
   ipcMain.handle('video:probe', async (event, path: unknown) => {
     assertTrustedSender(event);
@@ -321,5 +345,6 @@ app.on('window-all-closed', () => {
 });
 
 app.on('will-quit', () => {
-  void rm(outputDirectory(), { recursive: true, force: true });
+  // Synchronous: the process exits right after this, before an async delete would finish.
+  rmSync(outputDirectory(), { recursive: true, force: true });
 });
