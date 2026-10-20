@@ -490,6 +490,12 @@ body {
   max-width: none;
   aspect-ratio: 320 / 260;
   user-select: none;
+  transition: opacity 500ms ease;
+}
+
+/* SquikHero reveals the scene once its image has loaded. */
+.squik-hero:not([data-revealed]) {
+  opacity: 0;
 }
 
 .squik-scene,
@@ -541,6 +547,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .squik-hero,
   .squik-hero[data-animate] .squik-scene,
   .squik-hero[data-animate] .squik-sky {
     transition: none;

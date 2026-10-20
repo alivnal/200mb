@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTheme } from '@/app/providers';
 import { useStillness } from './iso/react/live';
 
@@ -57,6 +57,10 @@ function measureFit(stage: HTMLElement, card: HTMLElement, currentShift: number)
   const header = document.querySelector('.app-header');
   const scroller = stage.closest('.screen-content');
   const box = card.getBoundingClientRect();
+  // On first paint the card's slide-in still holds it lower; measured with
+  // that offset, the card would jump once the animation ends.
+  const transform = getComputedStyle(card).transform;
+  const slide = transform && transform !== 'none' ? new DOMMatrixReadOnly(transform).m42 : 0;
   const anchor = stage.getBoundingClientRect();
   const top = (header?.getBoundingClientRect().bottom ?? 0) + GAP;
   const bottom = Math.min(scroller?.getBoundingClientRect().bottom ?? Infinity, firstScreenBottom()) - GAP;
@@ -96,7 +100,7 @@ function measureFit(stage: HTMLElement, card: HTMLElement, currentShift: number)
     scale,
     left: imageLeft - anchor.left,
     top: imageTop - anchor.top,
-    cardShift: cardTop - (box.top - currentShift),
+    cardShift: cardTop - (box.top - slide - currentShift),
   };
 }
 
@@ -123,6 +127,17 @@ export default function SquikHero() {
   const [fit, setFit] = useState<Fit | null>(null);
   const [animate, setAnimate] = useState(false);
   const [loadBoth, setLoadBoth] = useState(false);
+  // The scene fades in once its image has loaded, rather than appearing as an
+  // empty box that fills in a moment later.
+  const [revealed, setRevealed] = useState(false);
+  const reveal = useCallback(() => setRevealed(true), []);
+
+  // An image the browser had cached (or that loaded before hydration) fires
+  // no load event React can see, so check once it is in the page.
+  useLayoutEffect(() => {
+    const active = stageRef.current?.querySelector<HTMLImageElement>('.squik-scene[data-active]');
+    if (active?.complete && active.naturalWidth > 0) reveal();
+  }, [time, still, reveal]);
 
   // The theme settles just after hydration; only animate changes after that,
   // so a night visit does not open with a sunset. The scene not on show is
@@ -196,6 +211,7 @@ export default function SquikHero() {
         data-time={time}
         data-ready={fit ? '' : undefined}
         data-animate={animate ? '' : undefined}
+        data-revealed={revealed ? '' : undefined}
         style={fit ? { width: WIDTH * fit.scale, left: fit.left, top: fit.top } : undefined}
       >
         {/* Sun and moon sit behind both scenes, so they set and rise behind
@@ -214,6 +230,7 @@ export default function SquikHero() {
             alt=""
             decoding="async"
             draggable={false}
+            onLoad={scene === time ? reveal : undefined}
           />
         ))}
       </div>
