@@ -451,6 +451,13 @@ body {
   margin: auto;
 }
 
+/* A running job's panel needs less width than the tools, so the scene beside
+   it gets the room to show as large as the homepage one. */
+.job-layout {
+  grid-template-columns: minmax(17rem, 1.3fr) minmax(min(27rem, 100%), 0.7fr);
+  width: min(100%, 86rem);
+}
+
 .tool-intro {
   max-width: 34rem;
 }

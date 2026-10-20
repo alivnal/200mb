@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs';
 import { writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const DEFAULT_SIZE = { width: 1180, height: 820 };
+// The first window takes most of the screen, so the scene opens at the
+// largest size it can (it grows with the window), up to where it stops
+// growing.
+const DEFAULT_SHARE = 0.9;
+const MAX_DEFAULT = { width: 1920, height: 1200 };
 // Wide enough that the scene and the card sit side by side. Smaller screens
 // (a 1366x768 laptop at 125% has about 1093x574 of work area) get their whole
 // work area instead, so the window never runs under the taskbar.
@@ -34,8 +38,8 @@ export interface WindowGeometry extends Partial<Rectangle> {
 }
 
 /**
- * The last window frame if it is still on a connected display, else the
- * default size centred; both, and the minimum size, capped to the display's
+ * The last window frame if it is still on a connected display, else most of
+ * the work area, centred; both, and the minimum size, capped to the display's
  * work area (the screen less the taskbar or Dock, in scaled pixels).
  */
 export function restoreWindowGeometry(): WindowGeometry {
@@ -54,9 +58,11 @@ export function restoreWindowGeometry(): WindowGeometry {
     minHeight: Math.min(MIN_SIZE.height, workArea.height),
   };
   if (!saved || !home) {
+    const share = (size: number, max: number, min: number) =>
+      Math.min(size, Math.max(min, Math.min(max, Math.round(size * DEFAULT_SHARE))));
     return {
-      width: Math.min(DEFAULT_SIZE.width, workArea.width),
-      height: Math.min(DEFAULT_SIZE.height, workArea.height),
+      width: share(workArea.width, MAX_DEFAULT.width, MIN_SIZE.width),
+      height: share(workArea.height, MAX_DEFAULT.height, MIN_SIZE.height),
       ...limits,
     };
   }

@@ -74,7 +74,7 @@ export default function CompressionStatus({
   return (
     // The job's own diorama plays beside the panel while it runs, placed the
     // way the homepage hero is.
-    <section className="tool-layout">
+    <section className="tool-layout job-layout">
       <SquikHero scene={job} />
       <div className="scene-card">
         <ScreenPanel size="lg" className="z-10">
