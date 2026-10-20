@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { formatBytes } from '@/lib/squish-core';
 import MaterialIcon from './MaterialIcon';
 import BeaverCompressionScene from './mascot/BeaverCompressionScene';
+import SquikHero from './SquikHero';
 import {
   PanelBody,
   PanelDivider,
@@ -29,6 +30,8 @@ interface CompressionStatusProps {
   originalSize?: number;
   wasmLoading?: boolean;
   phase?: CompressionPhase;
+  /** The running job, which picks the diorama shown beside the panel. */
+  job?: 'compress' | 'merge' | 'trim';
   onCancel: () => void;
 }
 
@@ -40,6 +43,7 @@ export default function CompressionStatus({
   originalSize,
   wasmLoading = false,
   phase = 'compressing',
+  job = 'compress',
   onCancel,
 }: CompressionStatusProps) {
   const { t } = useTranslation();
@@ -68,60 +72,65 @@ export default function CompressionStatus({
             : progressSnap.phaseLabel;
 
   return (
-    <div>
-      <ScreenPanel size="lg" className="z-10">
-        <PanelHeader>
-          <div className="flex items-center justify-center gap-2 text-headline-sm text-ink">
-            <MaterialIcon name="movie" filled className="text-accent shrink-0" size={20} />
-            <span className="truncate max-w-[min(100%,260px)]">{filename}</span>
-          </div>
-          <p className="mt-space-1 text-body-sm leading-5 text-muted">
-            {originalSize
-              ? t('common.originalTarget', { size: formatBytes(originalSize) })
-              : t('common.targetUnderMb')}
-          </p>
-        </PanelHeader>
-
-        <PanelDivider />
-
-        <PanelBody className="flex flex-col items-center">
-          <BeaverCompressionScene progress={progressSnap.progress} percentage={percentage} />
-
-          <div className="status-details mt-space-6 text-center w-full">
-            <p className="text-headline-sm leading-[30px] text-accent" aria-live="polite">
-              {phaseTitle}
-            </p>
-
-            <div className="status-times mt-space-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-body-sm text-muted">
-              <span className="inline-flex items-center gap-1">
-                <MaterialIcon name="timer" size={16} />
-                {t('status.elapsed', { time: formatElapsed(elapsedMs) })}
-              </span>
-              {encodeElapsedMs !== null && (
-                <span className="inline-flex items-center gap-1 text-accent">
-                  <MaterialIcon name="movie_filter" size={16} />
-                  {t('status.encoding', { time: formatElapsed(encodeElapsedMs) })}
-                </span>
-              )}
+    // The job's own diorama plays beside the panel while it runs, placed the
+    // way the homepage hero is.
+    <section className="tool-layout">
+      <SquikHero scene={job} />
+      <div className="scene-card">
+        <ScreenPanel size="lg" className="z-10">
+          <PanelHeader>
+            <div className="flex items-center justify-center gap-2 text-headline-sm text-ink">
+              <MaterialIcon name="movie" filled className="text-accent shrink-0" size={20} />
+              <span className="truncate max-w-[min(100%,260px)]">{filename}</span>
             </div>
-
-            <p className="status-note text-body-sm leading-5 text-muted mt-space-2 max-w-sm mx-auto">
-              {wasmLoading ? t('status.wasmHint') : t('status.keepTabOpen')}
+            <p className="mt-space-1 text-body-sm leading-5 text-muted">
+              {originalSize
+                ? t('common.originalTarget', { size: formatBytes(originalSize) })
+                : t('common.targetUnderMb')}
             </p>
-          </div>
-        </PanelBody>
+          </PanelHeader>
 
-        <PanelFooter>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="pixel-btn pixel-btn-secondary pixel-btn-block"
-          >
-            <MaterialIcon name="cancel" size={18} />
-            {t('status.cancelCompression')}
-          </button>
-        </PanelFooter>
-      </ScreenPanel>
-    </div>
+          <PanelDivider />
+
+          <PanelBody className="flex flex-col items-center">
+            <BeaverCompressionScene progress={progressSnap.progress} percentage={percentage} />
+
+            <div className="status-details mt-space-6 text-center w-full">
+              <p className="text-headline-sm leading-[30px] text-accent" aria-live="polite">
+                {phaseTitle}
+              </p>
+
+              <div className="status-times mt-space-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-body-sm text-muted">
+                <span className="inline-flex items-center gap-1">
+                  <MaterialIcon name="timer" size={16} />
+                  {t('status.elapsed', { time: formatElapsed(elapsedMs) })}
+                </span>
+                {encodeElapsedMs !== null && (
+                  <span className="inline-flex items-center gap-1 text-accent">
+                    <MaterialIcon name="movie_filter" size={16} />
+                    {t('status.encoding', { time: formatElapsed(encodeElapsedMs) })}
+                  </span>
+                )}
+              </div>
+
+              <p className="status-note text-body-sm leading-5 text-muted mt-space-2 max-w-sm mx-auto">
+                {wasmLoading ? t('status.wasmHint') : t('status.keepTabOpen')}
+              </p>
+            </div>
+          </PanelBody>
+
+          <PanelFooter>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="pixel-btn pixel-btn-secondary pixel-btn-block"
+            >
+              <MaterialIcon name="cancel" size={18} />
+              {t('status.cancelCompression')}
+            </button>
+          </PanelFooter>
+        </ScreenPanel>
+      </div>
+    </section>
   );
 }

@@ -241,6 +241,7 @@ export default function SquishApp() {
         originalSize={metadata.size}
         wasmLoading={wasmLoading}
         phase={jobPhase}
+        job={jobKind}
         onCancel={handleCancel}
       />
     );

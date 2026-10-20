@@ -591,13 +591,20 @@ body {
   display: inline;
 }
 
-.tool-ui {
+/* The tool card on the homepage, or a running job's panel (.scene-card). */
+.tool-ui,
+.scene-card {
   grid-column: 2;
   grid-row: 1;
   position: relative;
   z-index: 1;
   /* Set by SquikHero so the card's corner sits on the diorama's meadow. */
   translate: 0 var(--squik-card-shift, 0px);
+}
+
+.scene-card {
+  width: 100%;
+  min-width: 0;
 }
 
 .pixel-water-glint {
@@ -1495,7 +1502,8 @@ body {
     display: none;
   }
 
-  .tool-ui {
+  .tool-ui,
+  .scene-card {
     grid-column: 1;
     grid-row: 2;
   }

@@ -19,11 +19,14 @@ const MAX_SCALE = 4;
 // Stacked, a scene shorter than this is left out, so a tall card (trim with a
 // video loaded) gets the whole first screen. Matches the CSS minimum width.
 const MIN_STACKED_HEIGHT = 80;
-const SCENES = ['day', 'night'] as const;
-type Scene = (typeof SCENES)[number];
+const TIMES = ['day', 'night'] as const;
+type Time = (typeof TIMES)[number];
 
-const sceneSrc = (scene: Scene, still: boolean) =>
-  still ? `/hero/squik-hero-${scene}-still.png` : `/hero/squik-hero-${scene}.webp`;
+/** Which diorama: the homepage hero, or the scene for a running job. */
+export type DioramaScene = 'hero' | 'compress' | 'merge' | 'trim';
+
+const sceneSrc = (scene: DioramaScene, time: Time, still: boolean) =>
+  still ? `/hero/squik-${scene}-${time}-still.png` : `/hero/squik-${scene}-${time}.webp`;
 
 type Fit = { scale: number; left: number; top: number; cardShift: number };
 
@@ -118,7 +121,9 @@ function stackedReserved(stage: HTMLElement, card: HTMLElement, layout: HTMLElem
   return Math.ceil(stageTop + rowGap + card.getBoundingClientRect().height + 2 * GAP + below);
 }
 
-export default function SquikHero() {
+// Placed next to the layout's card: the tool card on the homepage, or the
+// panel of a running job (.scene-card), which shows the job's own scene.
+export default function SquikHero({ scene = 'hero' }: { scene?: DioramaScene }) {
   const still = useStillness();
   const { resolvedTheme } = useTheme();
   const time = resolvedTheme === 'dark' ? 'night' : 'day';
@@ -137,7 +142,7 @@ export default function SquikHero() {
   useLayoutEffect(() => {
     const active = stageRef.current?.querySelector<HTMLImageElement>('.squik-scene[data-active]');
     if (active?.complete && active.naturalWidth > 0) reveal();
-  }, [time, still, reveal]);
+  }, [scene, time, still, reveal]);
 
   // The theme settles just after hydration; only animate changes after that,
   // so a night visit does not open with a sunset. The scene not on show is
@@ -153,7 +158,7 @@ export default function SquikHero() {
   useLayoutEffect(() => {
     const stage = stageRef.current;
     const layout = stage?.parentElement;
-    const card = layout?.querySelector<HTMLElement>('.tool-ui');
+    const card = layout?.querySelector<HTMLElement>('.tool-ui, .scene-card');
     if (!stage || !layout || !card) return;
     // The stylesheet decides the layout: side by side it takes the scene out of
     // flow for this script to place; stacked (narrow pages, never the desktop
@@ -218,19 +223,19 @@ export default function SquikHero() {
             the diorama when the theme changes. */}
         <img className="squik-sky squik-sun" src="/hero/squik-sun.png" alt="" draggable={false} />
         <img className="squik-sky squik-moon" src="/hero/squik-moon.png" alt="" draggable={false} />
-        {SCENES.map((scene) => (
+        {TIMES.map((variant) => (
           <img
-            key={scene}
+            key={variant}
             className="squik-scene"
-            data-active={scene === time ? '' : undefined}
+            data-active={variant === time ? '' : undefined}
             // The scene not on show loads once the page has settled.
-            src={scene === time || loadBoth ? sceneSrc(scene, still) : undefined}
+            src={variant === time || loadBoth ? sceneSrc(scene, variant, still) : undefined}
             width={WIDTH}
             height={HEIGHT}
             alt=""
             decoding="async"
             draggable={false}
-            onLoad={scene === time ? reveal : undefined}
+            onLoad={variant === time ? reveal : undefined}
           />
         ))}
       </div>

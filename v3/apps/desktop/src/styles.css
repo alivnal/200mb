@@ -198,7 +198,8 @@ html:is([data-platform="mac"], [data-platform="win"]) .tool-layout {
     visibility: hidden;
   }
 
-  html:is([data-platform="mac"], [data-platform="win"]) .tool-ui {
+  html:is([data-platform="mac"], [data-platform="win"]) .tool-ui,
+  html:is([data-platform="mac"], [data-platform="win"]) .scene-card {
     grid-column: 2;
     grid-row: 1;
   }
