@@ -69,6 +69,8 @@ const clips = {
   first: join(videoDirectory, 'ders 1 çğü.mp4'),
   second: join(videoDirectory, "ders 2 it's.mp4"),
   other: join(videoDirectory, 'farklı boyut 3.mp4'),
+  // Phone-like 4K HEVC: decoded on the GPU when it can, in software when not.
+  phone: join(videoDirectory, 'telefon 4K hevc.mp4'),
 };
 for (const [path, size] of scale === 1 ? [[clips.first, '1280x720'], [clips.second, '1280x720'], [clips.other, '640x480']] : []) {
   mkdirSync(videoDirectory, { recursive: true });
@@ -79,7 +81,15 @@ for (const [path, size] of scale === 1 ? [[clips.first, '1280x720'], [clips.seco
     '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', path,
   ]);
 }
-if (scale === 1) check('test clips created with bundled ffmpeg.exe', true, videoDirectory);
+if (scale === 1) {
+  execFileSync(ffmpeg, [
+    '-y', '-hide_banner', '-loglevel', 'error',
+    '-f', 'lavfi', '-i', 'testsrc2=d=2:s=3840x2160:r=30',
+    '-f', 'lavfi', '-i', 'sine=f=440:d=2',
+    '-c:v', 'libx265', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-tag:v', 'hvc1', '-c:a', 'aac', '-shortest', clips.phone,
+  ]);
+  check('test clips created with bundled ffmpeg.exe', true, videoDirectory);
+}
 
 const app = await _electron.launch({
   executablePath,
@@ -172,7 +182,7 @@ try {
 
     for (const [label, path] of Object.entries(clips)) {
       const probe = await page.evaluate((value) => window.squikDesktop.probe(value), path);
-      check(`probe ${label}`, Math.abs(probe.duration - 3) < 0.3, probe);
+      check(`probe ${label}`, Math.abs(probe.duration - (label === 'phone' ? 2 : 3)) < 0.3, probe);
     }
 
     const compressed = await runJob('smoke-compress', { kind: 'compress', path: clips.first });
@@ -185,6 +195,11 @@ try {
     const encoded = await runJob('smoke-merge-encode', { kind: 'merge', paths: [clips.first, clips.other] });
     check('merge by encode', encoded.skippedEncode === false && encoded.compressedSize > 0, encoded);
     check('merge by encode duration', Math.abs(duration(outputPath('smoke-merge-encode')) - 6) < 0.5);
+
+    // 4K HEVC joined with a 640x480 clip: an encode that tries GPU decoding first.
+    const phoneMerge = await runJob('smoke-merge-hevc', { kind: 'merge', paths: [clips.phone, clips.other] });
+    check('merge 4K HEVC with another clip (GPU decode or software fallback)', phoneMerge.skippedEncode === false && phoneMerge.compressedSize > 0, phoneMerge);
+    check('merge 4K HEVC duration', Math.abs(duration(outputPath('smoke-merge-hevc')) - 5) < 0.5);
 
     const trimmed = await runJob('smoke-trim', { kind: 'trim', path: clips.first, deleteSegments: [{ startSec: 1, endSec: 2 }] });
     check('trim', trimmed.compressedSize > 0, trimmed);

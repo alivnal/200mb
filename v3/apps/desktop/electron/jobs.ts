@@ -23,6 +23,7 @@ export interface ProbeResult extends VideoProbeMetadata {
   videoCodec: string;
   /** Stream index of the first audio track, or null. */
   audioStream: number | null;
+  audioCodec: string | null;
   /** Codec parameters that must match for clips to be joined without re-encoding. */
   copySignature: string;
 }
@@ -39,9 +40,18 @@ export interface JobOutput {
   trimSegmentCount?: number;
 }
 
+/** One FFmpeg input: a file, or only part of it, so the rest is never decoded. */
+interface EncodeInput {
+  path: string;
+  startSec?: number;
+  durationSec?: number;
+  /** Decode on the GPU (see wantsHardwareDecode). */
+  hardwareDecode: boolean;
+}
+
 /** What one FFmpeg run reads: inputs plus a filtergraph ending in [srcv]. */
 interface EncodeSource {
-  inputs: string[];
+  inputs: EncodeInput[];
   filter: string;
   /** Audio to map: a filtergraph label, an input stream, or none. */
   audio: string | null;
@@ -74,6 +84,28 @@ const MERGE_FPS = 30;
 const REQUIRED_FREE_BYTES = 2 * MAX_OUTPUT_BYTES + 100 * 1024 * 1024;
 const KILL_GRACE_MS = 3000;
 const MIN_CAPPED_VIDEO_BPS = 300_000;
+// A trim is copied without re-encoding only if every cut moves this little.
+const KEYFRAME_SNAP_SECONDS = 0.5;
+// Codecs that copy into MP4 as they are.
+const COPYABLE_VIDEO = ['h264', 'hevc'];
+const COPYABLE_AUDIO = ['aac', 'mp3', 'alac', 'ac3', 'eac3'];
+const HARDWARE_DECODER = process.platform === 'darwin' ? 'videotoolbox' : process.platform === 'win32' ? 'd3d11va' : null;
+
+/**
+ * Phone video (HEVC, often 4K) is slow to decode in software: decoding alone
+ * took 24 of the 27 seconds of a 4K trim, and the GPU halves it. 1080p H.264
+ * decodes faster on the CPU, so it stays there.
+ */
+function wantsHardwareDecode(probe: ProbeResult): boolean {
+  return HARDWARE_DECODER !== null && (probe.videoCodec === 'hevc' || probe.width * probe.height > 1920 * 1080);
+}
+
+/** One file in a copy join, optionally only from inpoint to outpoint. */
+interface CopyPart {
+  path: string;
+  inpoint?: number;
+  outpoint?: number;
+}
 
 export class FfmpegJobs {
   private activeProcess: ChildProcessWithoutNullStreams | null = null;
@@ -119,6 +151,7 @@ export class FfmpegJobs {
       videoStream: video.index,
       videoCodec: video.codec_name ?? '',
       audioStream: audio?.index ?? null,
+      audioCodec: audio?.codec_name ?? null,
       copySignature: JSON.stringify([
         video.codec_name, video.profile, video.width, video.height, video.pix_fmt, video.r_frame_rate, rotation,
         audio?.codec_name ?? null, audio?.sample_rate ?? null, audio?.channels ?? null,
@@ -154,7 +187,9 @@ export class FfmpegJobs {
       if (invalid) throw new Error(`The sections to delete are not valid (${invalid}).`);
       const keeps = deleteSegmentsToKeepSegments(deleteSegments, probe.duration);
       const base = basename(job.path, extname(job.path));
-      const output = await this.encode(trimSource(job.path, probe, keeps), outputPath, `${base}_trimmed_compressed.mp4`, report);
+      const filename = `${base}_trimmed_compressed.mp4`;
+      const output = (await this.trimByCopy(job.path, probe, keeps, outputPath, filename, report))
+        ?? (await this.encode(trimSource(job.path, probe, keeps), outputPath, filename, report));
       return { ...output, originalSize: probe.size, trimSegmentCount: deleteSegments.length };
     }
 
@@ -186,13 +221,82 @@ export class FfmpegJobs {
   ): Promise<JobOutput | null> {
     const totalBytes = probes.reduce((sum, probe) => sum + probe.size, 0);
     const signatures = new Set(probes.map((probe) => probe.copySignature));
-    const copyableCodec = ['h264', 'hevc'].includes(probes[0].videoCodec);
+    const copyableCodec = COPYABLE_VIDEO.includes(probes[0].videoCodec);
     if (signatures.size !== 1 || !copyableCodec || totalBytes > MAX_OUTPUT_BYTES * 0.98) return null;
+    const expectedDuration = probes.reduce((sum, probe) => sum + probe.duration, 0);
+    return this.copyJoin(paths.map((path) => ({ path })), expectedDuration, totalBytes, outputPath, filename, report);
+  }
 
+  /**
+   * A trim that already fits under the cap is copied as it is: lossless, and
+   * about a second instead of a full encode. A copy can only start at a
+   * keyframe, so each cut moves to the nearest keyframe, and only if that is
+   * within KEYFRAME_SNAP_SECONDS; otherwise (or for other codecs) returns null
+   * and the trim is encoded with exact cuts.
+   */
+  private async trimByCopy(
+    path: string,
+    probe: ProbeResult,
+    keeps: TrimSegment[],
+    outputPath: string,
+    filename: string,
+    report: ProgressReporter,
+  ): Promise<JobOutput | null> {
+    const keptSeconds = keeps.reduce((sum, keep) => sum + keep.endSec - keep.startSec, 0);
+    const copyable = COPYABLE_VIDEO.includes(probe.videoCodec) &&
+      (probe.audioCodec === null || COPYABLE_AUDIO.includes(probe.audioCodec));
+    if (!copyable || probe.size * (keptSeconds / probe.duration) > MAX_OUTPUT_BYTES * 0.98) return null;
+
+    const parts: CopyPart[] = [];
+    for (const { startSec, endSec } of keeps) {
+      const inpoint = startSec > 0 ? await this.keyframeNear(path, probe, startSec) : 0;
+      if (inpoint === null) return null;
+      parts.push({ path, inpoint, outpoint: endSec < probe.duration ? endSec : undefined });
+    }
+    const expectedDuration = parts.reduce((sum, part) => sum + (part.outpoint ?? probe.duration) - (part.inpoint ?? 0), 0);
+    const output = await this.copyJoin(parts, expectedDuration, probe.size, outputPath, filename, report);
+    return output && { ...output, originalSize: probe.size };
+  }
+
+  /** The keyframe nearest to seconds, if one is within KEYFRAME_SNAP_SECONDS. */
+  private async keyframeNear(path: string, probe: ProbeResult, seconds: number): Promise<number | null> {
+    const stdout = await this.capture('ffprobe', [
+      '-v', 'error', '-select_streams', `${probe.videoStream}`,
+      '-read_intervals', `${Math.max(0, seconds - 2)}%${seconds + 1}`,
+      '-show_entries', 'packet=pts_time,flags', '-of', 'csv=p=0', path,
+    ]);
+    let best: number | null = null;
+    for (const line of stdout.split(/\r?\n/)) {
+      const [time, flags] = line.split(',');
+      const pts = Number(time);
+      if (!flags?.includes('K') || !Number.isFinite(pts)) continue;
+      if (Math.abs(pts - seconds) <= KEYFRAME_SNAP_SECONDS && (best === null || Math.abs(pts - seconds) < Math.abs(best - seconds))) {
+        best = pts;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Joins parts by stream copy through FFmpeg's concat list. Returns null if
+   * the result is over the cap or its length looks wrong (the job is then
+   * encoded instead).
+   */
+  private async copyJoin(
+    parts: CopyPart[],
+    expectedDuration: number,
+    originalSize: number,
+    outputPath: string,
+    filename: string,
+    report: ProgressReporter,
+  ): Promise<JobOutput | null> {
     await this.assertFreeSpace(outputPath);
     const listPath = join(dirname(outputPath), `${basename(outputPath, '.mp4')}-concat.txt`);
-    const list = paths.map((path) => `file '${path.replaceAll("'", "'\\''")}'`).join('\n');
-    const expectedDuration = probes.reduce((sum, probe) => sum + probe.duration, 0);
+    const list = parts.map((part) => [
+      `file '${part.path.replaceAll("'", "'\\''")}'`,
+      ...(part.inpoint ? [`inpoint ${part.inpoint}`] : []),
+      ...(part.outpoint !== undefined ? [`outpoint ${part.outpoint}`] : []),
+    ].join('\n')).join('\n');
     const started = Date.now();
     try {
       await writeFile(listPath, `${list}\n`, 'utf8');
@@ -206,17 +310,17 @@ export class FfmpegJobs {
         expectedDuration,
         (ratio) => report({ stage: 'encoding', ratio }),
       );
-      const merged = await this.probe(outputPath);
-      const tolerance = 0.5 + 0.25 * paths.length;
-      if (merged.size > MAX_OUTPUT_BYTES || Math.abs(merged.duration - expectedDuration) > tolerance) {
+      const joined = await this.probe(outputPath);
+      const tolerance = 0.5 + 0.25 * parts.length;
+      if (joined.size > MAX_OUTPUT_BYTES || Math.abs(joined.duration - expectedDuration) > tolerance) {
         await rm(outputPath, { force: true });
         return null;
       }
       return {
         path: outputPath,
         filename,
-        originalSize: totalBytes,
-        compressedSize: merged.size,
+        originalSize,
+        compressedSize: joined.size,
         skippedEncode: true,
         encodeTimeMs: Date.now() - started,
       };
@@ -256,16 +360,24 @@ export class FfmpegJobs {
     });
     let blueprint = capToSource(blueprintForDegradationPass(tier, source.durationSeconds));
     let encodeTimeMs = 0;
+    let hardwareDecode = source.inputs.some((input) => input.hardwareDecode);
 
     try {
       while (tier < DEGRADATION_PASSES.length) {
         this.throwIfCancelled();
         await rm(outputPath, { force: true });
         const started = Date.now();
-        await this.runFfmpeg(encodeArgs(source, blueprint, outputPath), source.durationSeconds, (ratio) => {
-          progress = progressDone + (1 - progressDone) * 0.9 * ratio;
-          report({ stage: 'encoding', ratio: progress });
-        });
+        try {
+          await this.runFfmpeg(encodeArgs(source, blueprint, outputPath, hardwareDecode), source.durationSeconds, (ratio) => {
+            progress = progressDone + (1 - progressDone) * 0.9 * ratio;
+            report({ stage: 'encoding', ratio: progress });
+          });
+        } catch (error) {
+          if (!hardwareDecode || error instanceof CompressionCancelledError) throw error;
+          // No GPU decoder for this video (or no GPU at all): decode in software.
+          hardwareDecode = false;
+          continue;
+        }
         encodeTimeMs += Date.now() - started;
         progressDone = progress;
         report({ stage: 'finalizing', ratio: 0.5 });
@@ -374,7 +486,7 @@ function friendlyFfmpegError(stderr: string, code: number | null): string {
   return lines.slice(-3).join(' ') || `FFmpeg exited with code ${code}.`;
 }
 
-function encodeArgs(source: EncodeSource, blueprint: BitrateCalculation, outputPath: string): string[] {
+function encodeArgs(source: EncodeSource, blueprint: BitrateCalculation, outputPath: string, hardwareDecode: boolean): string[] {
   const videoBitrate = `${Math.round(blueprint.videoBitrateBps)}`;
   // Bound the long side, so portrait phone video shrinks like landscape does,
   // and never go above 1080p: at these bitrates 4K only looks worse.
@@ -383,7 +495,14 @@ function encodeArgs(source: EncodeSource, blueprint: BitrateCalculation, outputP
     `scale=w=if(gte(iw\\,ih)\\,min(${maxSide}\\,iw)\\,-2):h=if(gte(iw\\,ih)\\,-2\\,min(${maxSide}\\,ih))` +
     ',scale=trunc(iw/2)*2:trunc(ih/2)*2';
   const args = ['-y', '-hide_banner', '-loglevel', 'error', '-nostats', '-progress', 'pipe:1'];
-  for (const input of source.inputs) args.push('-i', input);
+  for (const input of source.inputs) {
+    if (hardwareDecode && input.hardwareDecode && HARDWARE_DECODER) args.push('-hwaccel', HARDWARE_DECODER);
+    // Input seeking: FFmpeg starts decoding at the keyframe before startSec and
+    // stops after durationSec, still cutting frame-accurately.
+    if (input.startSec) args.push('-ss', `${input.startSec}`);
+    if (input.durationSec !== undefined) args.push('-t', `${input.durationSec}`);
+    args.push('-i', input.path);
+  }
   const keepAudio = source.audio !== null && blueprint.audioBitrateBps > 0;
   // A filtergraph audio label left unmapped must still be consumed.
   const dropAudio = !keepAudio && source.audio?.startsWith('[') ? `;${source.audio}anullsink` : '';
@@ -394,10 +513,10 @@ function encodeArgs(source: EncodeSource, blueprint: BitrateCalculation, outputP
     args.push('-an');
   }
   args.push(
-    // veryfast measured as fast as ultrafast once scaled down, at clearly better
-    // quality per bit; native encodes are fast enough to afford it.
+    // superfast measured 28% faster than veryfast on a 10-minute 1080p lecture
+    // at the same bitrate, for a quality difference SSIM barely registers.
     '-c:v', 'libx264',
-    '-preset', 'veryfast',
+    '-preset', 'superfast',
     '-profile:v', 'high',
     '-threads', '0',
     '-b:v', videoBitrate,
@@ -414,7 +533,7 @@ function encodeArgs(source: EncodeSource, blueprint: BitrateCalculation, outputP
 
 function compressSource(path: string, probe: ProbeResult): EncodeSource {
   return {
-    inputs: [path],
+    inputs: [{ path, hardwareDecode: wantsHardwareDecode(probe) }],
     filter: `[0:${probe.videoStream}]null[srcv]`,
     audio: probe.audioStream === null ? null : `0:${probe.audioStream}`,
     durationSeconds: probe.duration,
@@ -426,18 +545,20 @@ function trimSource(path: string, probe: ProbeResult, keeps: TrimSegment[]): Enc
   const hasAudio = probe.audioStream !== null;
   const parts: string[] = [];
   const concatInputs: string[] = [];
-  keeps.forEach(({ startSec, endSec }, i) => {
-    parts.push(`[0:${probe.videoStream}]trim=start=${startSec}:end=${endSec},setpts=PTS-STARTPTS,setsar=1[v${i}]`);
+  // Each kept part is its own seeked input, so the deleted parts are never decoded.
+  keeps.forEach((_, i) => {
+    parts.push(`[${i}:${probe.videoStream}]setpts=PTS-STARTPTS,setsar=1[v${i}]`);
     concatInputs.push(`[v${i}]`);
     if (hasAudio) {
-      parts.push(`[0:${probe.audioStream}]atrim=start=${startSec}:end=${endSec},asetpts=PTS-STARTPTS[a${i}]`);
+      parts.push(`[${i}:${probe.audioStream}]asetpts=PTS-STARTPTS[a${i}]`);
       concatInputs.push(`[a${i}]`);
     }
   });
   parts.push(`${concatInputs.join('')}concat=n=${keeps.length}:v=1:a=${hasAudio ? 1 : 0}[srcv]${hasAudio ? '[srca]' : ''}`);
   const durationSeconds = keeps.reduce((sum, keep) => sum + keep.endSec - keep.startSec, 0);
+  const hardwareDecode = wantsHardwareDecode(probe);
   return {
-    inputs: [path],
+    inputs: keeps.map(({ startSec, endSec }) => ({ path, startSec, durationSec: endSec - startSec, hardwareDecode })),
     filter: parts.join(';'),
     audio: hasAudio ? '[srca]' : null,
     durationSeconds,
@@ -479,7 +600,7 @@ function mergeSource(paths: string[], probes: ProbeResult[]): EncodeSource {
   );
 
   return {
-    inputs: paths,
+    inputs: paths.map((path, i) => ({ path, hardwareDecode: wantsHardwareDecode(probes[i]) })),
     filter: parts.join(';'),
     audio: hasAnyAudio ? '[srca]' : null,
     durationSeconds: probes.reduce((sum, probe) => sum + probe.duration, 0),
