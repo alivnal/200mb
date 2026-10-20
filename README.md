@@ -58,12 +58,17 @@ npm run dist:win
 npm run dist:portable
 ```
 
-The macOS packages are ad-hoc signed, not Developer ID signed or notarized, so Gatekeeper
-blocks them on Macs that downloaded them ("Squik.app can't be opened"). Until they are
-notarized, users clear the download quarantine once after copying the app to Applications:
-`xattr -dr com.apple.quarantine /Applications/Squik.app`.
+The macOS packages are signed with the Developer ID certificate named in `build.mac.identity`
+(hardened runtime) and notarized by Apple, so they open on any Mac like an App Store app.
+The build Mac needs that certificate in its login keychain and a notarytool profile named
+`squik-notary`, saved once with:
+
+```bash
+xcrun notarytool store-credentials squik-notary --apple-id "<Apple ID>" --team-id "<Team ID>"
+```
+
 The Windows executables are unsigned, so SmartScreen asks users to choose More info >
-Run anyway. Configure code signing before distributing broadly.
+Run anyway. Configure Windows code signing before distributing broadly.
 
 The **Windows desktop** workflow (`.github/workflows/windows-desktop.yml`) builds the
 Windows app on a Windows runner, installs it silently, and drives it with
