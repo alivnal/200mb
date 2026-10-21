@@ -90,6 +90,15 @@ const KEYFRAME_SNAP_SECONDS = 0.5;
 const COPYABLE_VIDEO = ['h264', 'hevc'];
 const COPYABLE_AUDIO = ['aac', 'mp3', 'alac', 'ac3', 'eac3'];
 const HARDWARE_DECODER = process.platform === 'darwin' ? 'videotoolbox' : process.platform === 'win32' ? 'd3d11va' : null;
+// A GPU decoder that cannot handle a video (large H.264 screen recordings on
+// VideoToolbox) fails frame by frame, yet FFmpeg carries on and exits cleanly
+// with an audio-only file; on these lines the encode stops and decodes in
+// software instead.
+const HARDWARE_DECODE_FAILED = /hardware accelerator failed|Error while decoding stream/i;
+// A result is only accepted with a picture at least this share of the job's
+// length. Not the whole length: a source's video can end well before its
+// audio, and a mid-way decode failure is caught on stderr anyway.
+const MIN_PICTURE_SHARE = 0.5;
 
 /**
  * Phone video (HEVC, often 4K) is slow to decode in software: decoding alone
@@ -99,6 +108,9 @@ const HARDWARE_DECODER = process.platform === 'darwin' ? 'videotoolbox' : proces
 function wantsHardwareDecode(probe: ProbeResult): boolean {
   return HARDWARE_DECODER !== null && (probe.videoCodec === 'hevc' || probe.width * probe.height > 1920 * 1080);
 }
+
+/** The GPU decoder gave up on this video; the encode is retried in software. */
+class HardwareDecodeError extends Error {}
 
 /** One file in a copy join, optionally only from inpoint to outpoint. */
 interface CopyPart {
@@ -368,14 +380,21 @@ export class FfmpegJobs {
         await rm(outputPath, { force: true });
         const started = Date.now();
         try {
-          await this.runFfmpeg(encodeArgs(source, blueprint, outputPath, hardwareDecode), source.durationSeconds, (ratio) => {
-            progress = progressDone + (1 - progressDone) * 0.9 * ratio;
-            report({ stage: 'encoding', ratio: progress });
-          });
+          await this.runFfmpeg(
+            encodeArgs(source, blueprint, outputPath, hardwareDecode),
+            source.durationSeconds,
+            (ratio) => {
+              progress = progressDone + (1 - progressDone) * 0.9 * ratio;
+              report({ stage: 'encoding', ratio: progress });
+            },
+            hardwareDecode ? HARDWARE_DECODE_FAILED : undefined,
+          );
+          await this.assertHasPicture(outputPath, source.durationSeconds, hardwareDecode);
         } catch (error) {
           if (!hardwareDecode || error instanceof CompressionCancelledError) throw error;
           // No GPU decoder for this video (or no GPU at all): decode in software.
           hardwareDecode = false;
+          progress = progressDone;
           continue;
         }
         encodeTimeMs += Date.now() - started;
@@ -409,6 +428,21 @@ export class FfmpegJobs {
     }
   }
 
+  /**
+   * Throws unless the encode has a picture through most of the job: decoding
+   * can fail without FFmpeg failing, and the result must never be a file with
+   * sound and no picture.
+   */
+  private async assertHasPicture(outputPath: string, expectedSeconds: number, hardwareDecode: boolean): Promise<void> {
+    const stdout = await this.capture('ffprobe', [
+      '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=nb_frames,duration', '-of', 'csv=p=0', outputPath,
+    ]).catch(() => '');
+    const [frames, seconds] = stdout.trim().split(',').map(Number);
+    if (frames > 0 && seconds >= expectedSeconds * MIN_PICTURE_SHARE) return;
+    if (hardwareDecode) throw new HardwareDecodeError('The GPU could not decode this video.');
+    throw new Error('Squik could not read the picture of this video. Try exporting it again from the app that made it.');
+  }
+
   private async assertFreeSpace(outputPath: string): Promise<void> {
     const { bavail, bsize } = await statfs(dirname(outputPath));
     if (bavail * bsize < REQUIRED_FREE_BYTES) {
@@ -435,12 +469,14 @@ export class FfmpegJobs {
     });
   }
 
-  private runFfmpeg(args: string[], durationSeconds: number, onRatio: (ratio: number) => void): Promise<void> {
+  /** Runs FFmpeg; a stderr line matching failOn stops it and rejects. */
+  private runFfmpeg(args: string[], durationSeconds: number, onRatio: (ratio: number) => void, failOn?: RegExp): Promise<void> {
     this.throwIfCancelled();
     return new Promise((resolve, reject) => {
       const child = spawn(this.binary('ffmpeg'), args, { windowsHide: true });
       this.activeProcess = child;
       let stderr = '';
+      let failed = false;
       let stdoutBuffer = '';
       child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
         stdoutBuffer += chunk;
@@ -458,6 +494,10 @@ export class FfmpegJobs {
       });
       child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
         stderr = `${stderr}${chunk}`.slice(-6000);
+        if (failOn && !failed && failOn.test(chunk)) {
+          failed = true;
+          child.kill('SIGKILL');
+        }
       });
       child.once('error', (error) => {
         this.activeProcess = null;
@@ -466,6 +506,7 @@ export class FfmpegJobs {
       child.once('close', (code) => {
         this.activeProcess = null;
         if (this.cancelled) reject(new CompressionCancelledError());
+        else if (failed) reject(new HardwareDecodeError(friendlyFfmpegError(stderr, code)));
         else if (code !== 0) reject(new Error(friendlyFfmpegError(stderr, code)));
         else resolve();
       });
@@ -524,6 +565,10 @@ function encodeArgs(source: EncodeSource, blueprint: BitrateCalculation, outputP
     '-bufsize', `${Math.round(blueprint.videoBitrateBps * 2)}`,
     // Sparse or late audio otherwise aborts with "Too many packets buffered".
     '-max_muxing_queue_size', '4096',
+    // Keep each frame's own timing. Screen recordings are variable frame rate
+    // (about 25 real frames a second, tagged 120), and the MP4 default of a
+    // constant rate filled them out to 120 fps with repeated frames.
+    '-vsync', 'vfr',
     '-map_chapters', '-1',
     '-movflags', '+faststart',
     outputPath,
