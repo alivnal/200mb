@@ -7,7 +7,10 @@ export type TrimValidationCode = 'outOfBounds' | 'nothingLeft' | 'invalidRange';
 export type TrimDurationVerificationCode = 'tooShort' | 'tooLong';
 
 export function parseTimestampToSeconds(ts: string): number | null {
-  const parts = ts.trim().split(':');
+  // Dots are a common time separator in Turkish ("1.30", "00.10"): with two
+  // digits under 60 after each dot they mean minutes and seconds, not a fraction.
+  const dotted = /^\d+(\.[0-5]\d){1,2}$/.test(ts.trim());
+  const parts = (dotted ? ts.trim().replaceAll('.', ':') : ts.trim()).split(':');
   if (parts.length === 2) {
     const [m, s] = parts.map(Number);
     if (isNaN(m) || isNaN(s)) return null;
